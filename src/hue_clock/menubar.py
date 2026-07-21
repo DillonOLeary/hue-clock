@@ -3,9 +3,10 @@
 
 Shows 🟢 + elapsed time while clocked in, 🔴 while out. The embedded listener
 does the actual work (see listener.py); this UI just reads the shared state
-file. Launched at login via launchd (see launchd/com.dillonoleary.hue-clock.plist);
-quit from the menu. The single-instance lock in the listener prevents
-double-logging if a second copy is started.
+file. Launched by hand — `uv run hue-clock`, or the dockable "Hue Clock.app"
+built by scripts/make_app.py. Quit from the menu (or the Dock icon). The
+single-instance lock in the listener prevents double-logging if a second
+copy is started.
 """
 import datetime as dt
 import sys

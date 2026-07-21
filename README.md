@@ -15,6 +15,7 @@ uv sync                                  # creates .venv, installs rumps/pyobjc
 cp .env.example .env && chmod 600 .env   # fill in the values (see Setup below)
 uv run hue-clock-listener lights         # find your focus lamp's exact name
 uv run hue-clock                         # launch the menu bar app
+uv run scripts/make_app.py               # optional: build the dockable Hue Clock.app
 ```
 
 ## Menu bar app
@@ -82,27 +83,24 @@ uv run hue-clock-listener run      # headless listener, no menu bar (foreground)
    (rotate it there if it ever leaks).
 3. In the Hue app, map the Smart Button to toggle the focus lamp.
 
-## Autostart (launchd)
+## Dock app
 
-The launch agent runs the menu bar app (which embeds the listener — one
-process does everything) at login and keeps it alive:
+Nothing auto-starts — you decide when tracking runs. Build the app bundle:
 
 ```sh
-cp launchd/com.dillonoleary.hue-clock.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dillonoleary.hue-clock.plist
-tail -f ~/Library/Logs/hue-clock.log
+uv run scripts/make_app.py
 ```
 
-Notes:
+This renders the icon (Pillow runs in an ephemeral env via uv's inline
+script dependencies — no change to the project venv) and assembles
+`~/Applications/Hue Clock.app`, a thin launcher that cd's to this repo and
+execs `.venv/bin/hue-clock`. Drag it to the Dock once; from then on click it
+to start tracking, and quit from the menu bar (or right-click the Dock
+icon → Quit). While running it shows in the Dock; the single-instance lock
+makes an accidental double-launch harmless.
 
-- The plist hardcodes absolute paths (`.venv/bin/hue-clock`, the project
-  directory as `WorkingDirectory` so `.env` is found). Edit them when
-  deploying to another machine or after moving/renaming the directory —
-  and rerun `uv sync` after a move so the `.venv` shebangs are regenerated.
-- With `KeepAlive`, "Quit Hue Clock" from the menu just gets respawned by
-  launchd. To actually stop it:
-  `launchctl bootout gui/$(id -u)/com.dillonoleary.hue-clock`
-- Keep an always-on host awake: `sudo pmset -a sleep 0`.
+The bundle hardcodes this repo's absolute path — after moving or renaming
+the repo, rerun `uv sync` and then `uv run scripts/make_app.py`.
 
 ## Capacities API notes
 
