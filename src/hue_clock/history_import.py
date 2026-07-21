@@ -3,7 +3,8 @@
 Lines like "[2026-07-21T11:05:07] 🟢 11:05a" are the replayable record the old
 implementation kept; everything else in the log is diagnostics. Imported
 transitions carry IMPORTED provenance, so the projection archives them into
-its ledger without re-publishing lines that are already in Capacities."""
+its ledger without re-publishing lines that are already in Capacities.
+"""
 from __future__ import annotations
 
 import datetime as dt

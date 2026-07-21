@@ -3,12 +3,16 @@ from __future__ import annotations
 import datetime as dt
 import threading
 import time
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from hue_clock.formatting import format_duration
-from hue_clock.projections.capacities_note.daily_note import DailyNote
-from hue_clock.projections.capacities_note.ports import NotePublisher
-from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from hue_clock.projections.capacities_note.daily_note import DailyNote
+    from hue_clock.projections.capacities_note.ports import NotePublisher
+    from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
 
 SETTLE_SECONDS = 4
 RESEND_GRACE_SECONDS = 600
@@ -20,7 +24,8 @@ class NoteFlusher:
 
     Publisher calls happen outside the lock; every note mutation re-loads the
     aggregate inside the lock and re-checks the head, so a lamp event landing
-    mid-flush can never be lost to a stale save."""
+    mid-flush can never be lost to a stale save.
+    """
 
     def __init__(
         self,
@@ -29,7 +34,7 @@ class NoteFlusher:
         now: Callable[[], dt.datetime] = dt.datetime.now,
         settle: Callable[[float], None] = time.sleep,
         lock: threading.Lock | None = None,
-    ):
+    ) -> None:
         self.notes = notes
         self.publisher = publisher
         self.now = now

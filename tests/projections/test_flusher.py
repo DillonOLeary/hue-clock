@@ -168,7 +168,8 @@ class FlusherTest(unittest.TestCase):
         self.record((True, at(9, day=day2)))
         self.clock.current = at(18, day=day2)
 
-        confirmed_day2 = lambda line, day: day == day2
+        def confirmed_day2(line, day):
+            return day == day2
         self.publisher.line_present = confirmed_day2
         self.flush()
 

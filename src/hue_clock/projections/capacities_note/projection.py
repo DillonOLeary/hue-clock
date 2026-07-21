@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from eventsourcing.application import AggregateNotFoundError
-from eventsourcing.persistence import JSONTranscoder
 from eventsourcing.system import ProcessApplication
 
 from hue_clock.application.transcodings import DateAsISO, ProvenanceAsName
 from hue_clock.domain.work_day import WorkDay
 from hue_clock.projections.capacities_note.daily_note import DailyNote
+
+if TYPE_CHECKING:
+    from eventsourcing.persistence import JSONTranscoder
 
 PENDING_WINDOW_DAYS = 7
 
@@ -59,7 +62,7 @@ class CapacitiesNoteProjection(ProcessApplication):
 
     def queue_status(self, today: dt.date) -> QueueStatus:
         pending, head, last_confirmed = 0, None, None
-        for day, note in self._recent_notes(today):
+        for _day, note in self._recent_notes(today):
             pending += len(note.queue)
             if head is None and note.head is not None:
                 head = note.head

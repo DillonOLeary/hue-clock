@@ -15,7 +15,7 @@ API_VERSION = "0.1.0"
 
 
 class CapacitiesClient:
-    def __init__(self, token: str):
+    def __init__(self, token: str) -> None:
         self.token = token
 
     def _request(self, method, path, body=None, params=None):
@@ -49,6 +49,7 @@ class CapacitiesClient:
                     time.sleep(3)
                     continue
                 raise
+        return None
 
     def space(self):
         return self._request("GET", "/space")

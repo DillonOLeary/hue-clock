@@ -22,13 +22,13 @@ from hue_clock.runtime.config import load_config, require
 from hue_clock.runtime.daemon import start_daemon
 
 
-def cmd_lights():
+def cmd_lights() -> None:
     for light in _bridge().lights():
         on = "on " if light["on"]["on"] else "off"
         print(f"[{on}] {light['metadata']['name']}  ({light['id']})")
 
 
-def cmd_status():
+def cmd_status() -> None:
     now = dt.datetime.now()
     tracking = TimeTracking(env=persistence_env())
     status = tracking.clock_status(now)
@@ -54,18 +54,18 @@ def cmd_status():
         print(f"queued: {queue.pending} line(s); head {state}")
 
 
-def cmd_run():
-    lock, runtime, listener = start_daemon()  # noqa: F841 — lock held for process lifetime
+def cmd_run() -> None:
+    _lock, _runtime, listener = start_daemon()
     listener.run()
 
 
-def cmd_dedupe(date_str=None):
+def cmd_dedupe(date_str=None) -> None:
     day = dt.date.fromisoformat(date_str) if date_str else dt.date.today()
     removed = _publisher().scrub_adjacent_duplicates(day)
     print(f"deleted {removed} duplicate clock line(s) from {day}")
 
 
-def cmd_import_history(log_path=None):
+def cmd_import_history(log_path=None) -> None:
     from hue_clock.history_import import import_history
 
     import_history(log_path)
@@ -85,7 +85,7 @@ def _publisher(config=None):
     return CapacitiesNotePublisher(CapacitiesClient(token))
 
 
-def main():
+def main() -> None:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "run"
     arg = sys.argv[2] if len(sys.argv) > 2 else None
     if cmd == "lights":

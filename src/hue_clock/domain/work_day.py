@@ -34,7 +34,7 @@ class SpanOutsideDay(Exception):
 
 class WorkDay(Aggregate):
     @event("Opened")
-    def __init__(self, day: dt.date):
+    def __init__(self, day: dt.date) -> None:
         self.day = day
         self.ledger = DayLedger()
 

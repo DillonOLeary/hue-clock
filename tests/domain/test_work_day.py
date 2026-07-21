@@ -80,7 +80,7 @@ class WorkDayTest(unittest.TestCase):
     def test_events_carry_occurred_at_and_provenance(self):
         day = WorkDay(DAY)
         day.clock_in(at(9), Provenance.RECONCILED)
-        opened, clocked_in = day.collect_events()
+        _opened, clocked_in = day.collect_events()
         self.assertIsInstance(clocked_in, WorkDay.ClockedIn)
         self.assertEqual(clocked_in.day, DAY)
         self.assertEqual(clocked_in.at, at(9))

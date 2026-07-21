@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import datetime as dt
 from dataclasses import dataclass, replace
-from typing import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import datetime as dt
+    from collections.abc import Iterable
 
 
 @dataclass(frozen=True)
@@ -110,7 +113,7 @@ class DayLedger:
     def away_seconds(self) -> float:
         return sum(
             (later.started_at - earlier.ended_at).total_seconds()
-            for earlier, later in zip(self.sessions, self.sessions[1:])
+            for earlier, later in zip(self.sessions, self.sessions[1:], strict=False)
             if earlier.ended_at is not None
         )
 

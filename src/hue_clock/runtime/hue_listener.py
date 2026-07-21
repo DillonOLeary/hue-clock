@@ -9,7 +9,7 @@ RECONNECT_DELAY_S = 5
 
 
 class HueListener:
-    def __init__(self, runtime: TrackerRuntime, bridge: HueBridge, light_name: str):
+    def __init__(self, runtime: TrackerRuntime, bridge: HueBridge, light_name: str) -> None:
         self.runtime = runtime
         self.bridge = bridge
         self.light_id = bridge.find_light(light_name)["id"]
@@ -40,7 +40,8 @@ class HueListener:
 
     def _reconcile(self) -> None:
         """The lamp may have changed while we weren't listening; the true
-        transition time is unrecoverable, so the record is marked approximate."""
+        transition time is unrecoverable, so the record is marked approximate.
+        """
         live_on = self.bridge.light_is_on(self.light_id)
         now = dt.datetime.now()
         self.runtime.advance_to(now)

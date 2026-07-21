@@ -11,7 +11,8 @@ from hue_clock.runtime.note_flusher_loop import FlusherLoop
 
 def start_daemon() -> tuple[object, TrackerRuntime, HueListener]:
     """The full tracking stack: instance lock, event-sourced runtime,
-    flusher thread, and a ready-to-run bridge listener."""
+    flusher thread, and a ready-to-run bridge listener.
+    """
     lock = acquire_single_instance_lock()
     config = load_config()
     light_name = require(config.light_name, "FOCUS_LIGHT_NAME")

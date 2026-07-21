@@ -3,7 +3,8 @@
 The embedded daemon (runtime/daemon.py) does the actual work; this UI only
 issues commands and reads queries through TrackerRuntime. Launched by hand —
 `uv run hue-clock`, or the dockable "Hue Clock.app" built by
-scripts/make_app.py. Quit from the menu (or the Dock icon)."""
+scripts/make_app.py. Quit from the menu (or the Dock icon).
+"""
 import datetime as dt
 import sys
 import threading
@@ -16,7 +17,7 @@ from hue_clock.runtime.daemon import start_daemon
 
 
 class HueClockApp(rumps.App):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Hue Clock", title="⏳", quit_button=rumps.MenuItem("Quit Hue Clock"))
         self.now_item = rumps.MenuItem("starting…")
         self.today_item = rumps.MenuItem("")
@@ -28,7 +29,7 @@ class HueClockApp(rumps.App):
         threading.Thread(target=self._run_daemon, daemon=True).start()
         rumps.Timer(self._refresh, 15).start()
 
-    def _run_daemon(self):
+    def _run_daemon(self) -> None:
         try:
             self._lock, self.runtime, listener = start_daemon()
             listener.run()
@@ -39,8 +40,8 @@ class HueClockApp(rumps.App):
             self.startup_error = str(e)
             print(f"listener crashed: {e}", flush=True)
 
-    def _spawn_strike(self, fn, *args):
-        def run():
+    def _spawn_strike(self, fn, *args) -> None:
+        def run() -> None:
             try:
                 fn(*args)
             except Exception as e:
@@ -48,7 +49,7 @@ class HueClockApp(rumps.App):
             self._refresh()
         threading.Thread(target=run, daemon=True).start()
 
-    def _strike_custom(self, _sender):
+    def _strike_custom(self, _sender) -> None:
         window = rumps.Window(
             message="Minutes to strike, counting back from now:",
             title="Strike work time", default_text="30",
@@ -63,9 +64,10 @@ class HueClockApp(rumps.App):
             if minutes > 0:
                 self._spawn_strike(self.runtime.strike_window, minutes)
 
-    def _rebuild_strike_menu(self, now):
+    def _rebuild_strike_menu(self, now) -> None:
         """One entry per session today; click to tombstone the whole session.
-        Already-struck sessions show ⚫ and are disabled (no callback)."""
+        Already-struck sessions show ⚫ and are disabled (no callback).
+        """
         if self.strike_menu._menu is not None:  # rumps: no NSMenu until first add
             self.strike_menu.clear()
         overviews = self.runtime.sessions(now)
@@ -85,7 +87,7 @@ class HueClockApp(rumps.App):
         self.strike_menu.add(rumps.separator)
         self.strike_menu.add(rumps.MenuItem("Custom…", callback=self._strike_custom))
 
-    def _refresh(self, _timer=None):
+    def _refresh(self, _timer=None) -> None:
         if self.startup_error:
             self.title = "⚠️"
             self.now_item.title = f"Listener stopped: {self.startup_error[:80]}"
@@ -117,7 +119,7 @@ class HueClockApp(rumps.App):
         self._rebuild_strike_menu(now)
         self._refresh_queue_item(now)
 
-    def _refresh_queue_item(self, now):
+    def _refresh_queue_item(self, now) -> None:
         queue = self.runtime.queue_status(now)
         if queue.has_pending:
             count = f"{queue.pending} line{'s' if queue.pending != 1 else ''} queued"
@@ -133,7 +135,7 @@ class HueClockApp(rumps.App):
             self.last_item.title = "Nothing logged yet"
 
 
-def main():
+def main() -> None:
     log = open(LOG_FILE, "a", buffering=1)
     sys.stdout = sys.stderr = log
     print(f"--- Hue Clock menu bar app started {dt.datetime.now().isoformat()}", flush=True)

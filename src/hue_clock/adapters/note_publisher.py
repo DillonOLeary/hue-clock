@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import datetime as dt
 import time
-from typing import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import datetime as dt
+    from collections.abc import Callable
 
 CLOCK_MARKS = ("🟢", "🔴", "⚫")
 DELETE_PACING_SECONDS = 2.1
@@ -12,9 +15,10 @@ class CapacitiesNotePublisher:
     """Publishes note lines through the Capacities HTTP API.
 
     line_present treats an unreadable note as present: a 200 append that
-    cannot be read back must never push the flusher into duplicating."""
+    cannot be read back must never push the flusher into duplicating.
+    """
 
-    def __init__(self, client, pace: Callable[[float], None] = time.sleep):
+    def __init__(self, client, pace: Callable[[float], None] = time.sleep) -> None:
         self.client = client
         self.pace = pace
 

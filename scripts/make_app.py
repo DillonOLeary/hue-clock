@@ -33,7 +33,8 @@ GREEN = (72, 235, 130)
 
 def render_icon() -> Image.Image:
     s = 1024 * SS
-    p = lambda v: round(v * SS)  # 1024-grid coordinate → supersampled px
+    def p(v):
+        return round(v * SS)  # 1024-grid coordinate → supersampled px
 
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
 
@@ -45,8 +46,8 @@ def render_icon() -> Image.Image:
     gdraw = ImageDraw.Draw(grad)
     for y in range(inset, s - inset):
         t = (y - inset) / (s - 2 * inset)
-        color = tuple(round(a + (b - a) * t) for a, b in zip(top, bottom))
-        gdraw.line([(inset, y), (s - inset, y)], fill=color + (255,))
+        color = tuple(round(a + (b - a) * t) for a, b in zip(top, bottom, strict=False))
+        gdraw.line([(inset, y), (s - inset, y)], fill=(*color, 255))
     mask = Image.new("L", (s, s), 0)
     ImageDraw.Draw(mask).rounded_rectangle(
         [inset, inset, s - inset, s - inset], radius=radius, fill=255
@@ -74,15 +75,15 @@ def render_icon() -> Image.Image:
 
     # Light pool on the floor
     img = layer(lambda d: d.ellipse(
-        [cx - p(330), p(772), cx + p(330), p(852)], fill=GREEN + (95,)))
+        [cx - p(330), p(772), cx + p(330), p(852)], fill=(*GREEN, 95)))
     img = layer(lambda d: d.ellipse(
         [cx - p(212), p(786), cx + p(212), p(838)], fill=(150, 255, 190, 120)))
 
     # Bulb glow halos (drawn before the dome so it caps them)
     img = layer(lambda d: d.ellipse(
-        [cx - p(95), p(430 - 95), cx + p(95), p(430 + 95)], fill=GREEN + (50,)))
+        [cx - p(95), p(430 - 95), cx + p(95), p(430 + 95)], fill=(*GREEN, 50)))
     img = layer(lambda d: d.ellipse(
-        [cx - p(68), p(430 - 68), cx + p(68), p(430 + 68)], fill=GREEN + (95,)))
+        [cx - p(68), p(430 - 68), cx + p(68), p(430 + 68)], fill=(*GREEN, 95)))
 
     draw = ImageDraw.Draw(img)
 
@@ -98,14 +99,14 @@ def render_icon() -> Image.Image:
 
     # Bulb: bright green core with white-hot center
     draw.ellipse([cx - p(48), p(430 - 48), cx + p(48), p(430 + 48)],
-                 fill=GREEN + (255,))
+                 fill=(*GREEN, 255))
     draw.ellipse([cx - p(24), p(424 - 24), cx + p(24), p(424 + 24)],
                  fill=(235, 255, 242, 255))
 
     return img.resize((1024, 1024), Image.LANCZOS)
 
 
-def build_icns(master: Image.Image, icns_path: Path):
+def build_icns(master: Image.Image, icns_path: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         iconset = Path(tmp) / "AppIcon.iconset"
         iconset.mkdir()
@@ -119,7 +120,7 @@ def build_icns(master: Image.Image, icns_path: Path):
                         "-o", str(icns_path)], check=True)
 
 
-def build_app():
+def build_app() -> None:
     if APP.exists():
         shutil.rmtree(APP)
     macos = APP / "Contents" / "MacOS"

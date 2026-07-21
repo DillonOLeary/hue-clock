@@ -36,7 +36,8 @@ def require(value: str | None, name: str) -> str:
 def _load_env_file() -> None:
     """Already-set environment variables always win. The launcher app runs
     with the project root as its working directory, so the walk finds .env
-    immediately."""
+    immediately.
+    """
     for directory in (Path.cwd(), *Path.cwd().parents):
         env_path = directory / ".env"
         if env_path.exists():

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import datetime as dt
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from eventsourcing.domain import Aggregate, event
@@ -13,6 +13,9 @@ from hue_clock.projections.capacities_note.note_lines import (
     clock_out_line,
     strike_line,
 )
+
+if TYPE_CHECKING:
+    import datetime as dt
 
 PUBLISHED_PROVENANCES = (Provenance.OBSERVED, Provenance.RECONCILED)
 
@@ -30,7 +33,7 @@ class QueuedLine:
 
 class DailyNote(Aggregate):
     @event("Opened")
-    def __init__(self, day: dt.date):
+    def __init__(self, day: dt.date) -> None:
         self.day = day
         self.ledger = DayLedger()
         self.queue: list[QueuedLine] = []

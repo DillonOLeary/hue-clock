@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from eventsourcing.application import AggregateNotFoundError, Application
-from eventsourcing.persistence import JSONTranscoder
 
 from hue_clock.application.transcodings import DateAsISO, ProvenanceAsName
 from hue_clock.domain.work_day import Provenance, WorkDay
+
+if TYPE_CHECKING:
+    from eventsourcing.persistence import JSONTranscoder
 
 LOOKBACK_DAYS = 62
 

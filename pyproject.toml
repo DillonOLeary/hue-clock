@@ -16,3 +16,55 @@ hue-clock-listener = "hue_clock.cli:main"
 [build-system]
 requires = ["uv_build>=0.11,<0.13"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.22",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Docstrings are not required — the code is meant to speak for itself
+    # (CodeAesthetic). Docstring *quality* rules (D2xx/D4xx) stay enabled.
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "D203", "D213",  # resolve the two D-rule conflicts (keep D211, D212)
+    # unittest, not pytest — the flake8-pytest-style rules do not apply.
+    "PT",
+    # Clock in/out is wall-clock local time; naive datetimes are the model.
+    "DTZ",
+    # Emoji, ·, −, – in note lines are load-bearing (parity with Capacities).
+    "RUF001", "RUF002", "RUF003",
+    # Deliberate output: CLI results and the observability log file.
+    "T20",
+    # on/approx/no_timestamp booleans are natural domain parameters here.
+    "FBT",
+    # except-Exception at the listener/flusher/UI edges is intentional: a
+    # projection or publish failure must never crash the tracker.
+    "BLE001",
+    # Event-apply methods, rumps callbacks, and lambdas take framework-
+    # required parameters they don't all read.
+    "ARG",
+    # Exception-message ergonomics — not worth the indirection at this size.
+    "EM", "TRY003",
+    # Domain exceptions read as domain language (AlreadyClockedIn), not FooError.
+    "N818",
+    # Handled by the formatter.
+    "COM812",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "ANN",      # test signatures don't earn their annotations
+    "D",        # test names are the documentation
+    "S101",     # asserts are the point
+    "SLF001",   # tests reach into internals on purpose
+    "PLR2004",  # literal expected-values are clearer inline
+]
+
+[tool.ruff.format]
+docstring-code-format = true

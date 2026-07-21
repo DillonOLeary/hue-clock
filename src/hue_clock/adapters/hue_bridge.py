@@ -1,3 +1,4 @@
+import contextlib
 import json
 import ssl
 import urllib.request
@@ -7,7 +8,7 @@ STREAM_LIVENESS_TIMEOUT_S = 90
 
 
 class HueBridge:
-    def __init__(self, ip: str, app_key: str):
+    def __init__(self, ip: str, app_key: str) -> None:
         self.ip = ip
         self.app_key = app_key
 
@@ -35,7 +36,8 @@ class HueBridge:
         """Opened before reconciling state so no event can slip between the
         reconcile read and the subscription. The read timeout is the liveness
         check: silence past it means the socket died (e.g. dropped during a
-        Mac sleep) and the run loop should reconnect and reconcile."""
+        Mac sleep) and the run loop should reconnect and reconcile.
+        """
         req = urllib.request.Request(
             f"https://{self.ip}/eventstream/clip/v2",
             headers={"hue-application-key": self.app_key, "Accept": "text/event-stream"},
@@ -50,7 +52,5 @@ class HueBridge:
             for raw in stream:
                 line = raw.decode("utf-8", errors="replace").strip()
                 if line.startswith("data:"):
-                    try:
+                    with contextlib.suppress(json.JSONDecodeError):
                         yield json.loads(line[5:].strip())
-                    except json.JSONDecodeError:
-                        pass
