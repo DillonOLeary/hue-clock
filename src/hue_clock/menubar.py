@@ -1,23 +1,18 @@
-#!/usr/bin/env python3
-"""Menu bar wrapper around the Hue clock listener.
+"""Menu bar UI over the event-sourced tracker.
 
-Shows 🟢 + elapsed time while clocked in, 🔴 while out. The embedded listener
-does the actual work (see listener.py); this UI just reads the shared state
-file. Launched by hand — `uv run hue-clock`, or the dockable "Hue Clock.app"
-built by scripts/make_app.py. Quit from the menu (or the Dock icon). The
-single-instance lock in the listener prevents double-logging if a second
-copy is started.
-"""
+The embedded daemon (runtime/daemon.py) does the actual work; this UI only
+issues commands and reads queries through TrackerRuntime. Launched by hand —
+`uv run hue-clock`, or the dockable "Hue Clock.app" built by
+scripts/make_app.py. Quit from the menu (or the Dock icon)."""
 import datetime as dt
 import sys
 import threading
-from pathlib import Path
 
 import rumps
 
-from hue_clock import listener as hcl
-
-LOG_PATH = Path.home() / "Library" / "Logs" / "hue-clock.log"
+from hue_clock.formatting import format_clock, format_duration
+from hue_clock.runtime.config import LOG_FILE
+from hue_clock.runtime.daemon import start_daemon
 
 
 class HueClockApp(rumps.App):
@@ -28,25 +23,26 @@ class HueClockApp(rumps.App):
         self.last_item = rumps.MenuItem("")
         self.strike_menu = rumps.MenuItem("Strike work time")
         self.menu = [self.now_item, self.today_item, self.last_item, self.strike_menu]
-        self.listener_error = None
-        threading.Thread(target=self._listen, daemon=True).start()
+        self.runtime = None
+        self.startup_error = None
+        threading.Thread(target=self._run_daemon, daemon=True).start()
         rumps.Timer(self._refresh, 15).start()
 
-    def _listen(self):
+    def _run_daemon(self):
         try:
-            hcl.cmd_run()
+            self._lock, self.runtime, listener = start_daemon()
+            listener.run()
         except SystemExit as e:
-            self.listener_error = str(e)
+            self.startup_error = str(e)
             print(f"listener exited: {e}", flush=True)
         except Exception as e:
-            self.listener_error = str(e)
+            self.startup_error = str(e)
             print(f"listener crashed: {e}", flush=True)
 
     def _spawn_strike(self, fn, *args):
         def run():
             try:
                 fn(*args)
-                hcl.flush_pending(hcl.ACTIVE["sync"], hcl.ACTIVE["state"])
             except Exception as e:
                 print(f"strike failed: {e}", flush=True)
             self._refresh()
@@ -65,70 +61,80 @@ class HueClockApp(rumps.App):
             except ValueError:
                 return
             if minutes > 0:
-                self._spawn_strike(hcl.strike_window, minutes)
+                self._spawn_strike(self.runtime.strike_window, minutes)
 
-    def _rebuild_strike_menu(self):
+    def _rebuild_strike_menu(self, now):
         """One entry per session today; click to tombstone the whole session.
         Already-struck sessions show ⚫ and are disabled (no callback)."""
         if self.strike_menu._menu is not None:  # rumps: no NSMenu until first add
             self.strike_menu.clear()
-        labels = hcl.session_labels()
-        if not labels:
+        overviews = self.runtime.sessions(now)
+        if not overviews:
             self.strike_menu.add(rumps.MenuItem("No sessions yet"))
-        for label, index, struck in labels:
-            if struck:
+        for index, session in enumerate(overviews):
+            end_txt = format_clock(session.ended_at) if session.ended_at else "now"
+            label = (f"{format_clock(session.started_at)}–{end_txt}"
+                     f" · {format_duration(session.seconds)}")
+            if session.fully_struck:
                 self.strike_menu.add(rumps.MenuItem(f"⚫ {label}"))
             else:
                 self.strike_menu.add(rumps.MenuItem(
                     label,
-                    callback=lambda _s, i=index: self._spawn_strike(hcl.strike_session, i),
+                    callback=lambda _s, i=index: self._spawn_strike(self.runtime.strike_session, i),
                 ))
         self.strike_menu.add(rumps.separator)
         self.strike_menu.add(rumps.MenuItem("Custom…", callback=self._strike_custom))
 
     def _refresh(self, _timer=None):
-        if self.listener_error:
+        if self.startup_error:
             self.title = "⚠️"
-            self.now_item.title = f"Listener stopped: {self.listener_error[:80]}"
+            self.now_item.title = f"Listener stopped: {self.startup_error[:80]}"
             return
-        state = hcl.ClockState()
+        if self.runtime is None:
+            return
         now = dt.datetime.now()
+        self.runtime.advance_to(now)
         # Emoji-only title: keeps the status item ~25pt wide so it fits in the
         # sliver of menu bar left of the notch. Details live in the menu.
-        if state.lamp_on and state.since:
+        status = self.runtime.clock_status(now)
+        if status is not None and status.is_clocked_in:
             self.title = "🟢"
-            elapsed = hcl.fmt_duration((now - state.since).total_seconds())
+            elapsed = format_duration((now - status.since).total_seconds())
             self.now_item.title = f"In for {elapsed}"
-        elif state.lamp_on is None:
-            self.title = "⏳"
-            self.now_item.title = "starting…"
         else:
             self.title = "🔴"
             self.now_item.title = "Clocked out"
-        summary = state.day_summary(now)
+        summary = self.runtime.day_summary(now)
         if summary:
-            title = (f"Today: {hcl.fmt_duration(summary['worked_s'])} · "
-                     f"{summary['count']} session{'s' if summary['count'] != 1 else ''}")
-            if summary["struck_s"] >= 60:
-                title += f" · {hcl.fmt_duration(summary['struck_s'])} struck"
+            plural = "s" if summary.session_count != 1 else ""
+            title = (f"Today: {format_duration(summary.worked_seconds)} · "
+                     f"{summary.session_count} session{plural}")
+            if summary.struck_seconds >= 60:
+                title += f" · {format_duration(summary.struck_seconds)} struck"
             self.today_item.title = title
         else:
             self.today_item.title = "No sessions today"
-        self._rebuild_strike_menu()
-        pending = len(state.data.get("pending") or [])
-        last = state.data.get("last_append")
-        if pending:
-            plural = "s" if pending != 1 else ""
-            self.last_item.title = f"⚠️ {pending} line{plural} queued — restart Capacities"
-        elif last:
-            at = hcl.fmt_clock(dt.datetime.fromisoformat(last["at"]))
-            self.last_item.title = f"Last logged {at} ✓"
+        self._rebuild_strike_menu(now)
+        self._refresh_queue_item(now)
+
+    def _refresh_queue_item(self, now):
+        queue = self.runtime.queue_status(now)
+        if queue.has_pending:
+            count = f"{queue.pending} line{'s' if queue.pending != 1 else ''} queued"
+            if not queue.head_sent:
+                self.last_item.title = f"⚠️ {count} — appends failing"
+            elif queue.head_resends >= 2:
+                self.last_item.title = f"⚠️ {count} — try restarting Capacities"
+            else:
+                self.last_item.title = f"⏳ {count} — awaiting confirmation"
+        elif queue.last_confirmed_at is not None:
+            self.last_item.title = f"Last logged {format_clock(queue.last_confirmed_at)} ✓"
         else:
             self.last_item.title = "Nothing logged yet"
 
 
 def main():
-    log = open(LOG_PATH, "a", buffering=1)
+    log = open(LOG_FILE, "a", buffering=1)
     sys.stdout = sys.stderr = log
     print(f"--- Hue Clock menu bar app started {dt.datetime.now().isoformat()}", flush=True)
     app = HueClockApp()

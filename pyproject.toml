@@ -4,11 +4,14 @@ version = "0.1.0"
 description = "Clock in/out by Hue focus lamp — event-sourced, append-only logging to Capacities daily notes, with a macOS menu bar app"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["rumps>=0.4"]
+dependencies = [
+    "eventsourcing==9.5.4",
+    "rumps>=0.4",
+]
 
 [project.scripts]
 hue-clock = "hue_clock.menubar:main"
-hue-clock-listener = "hue_clock.listener:main"
+hue-clock-listener = "hue_clock.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11,<0.13"]
