@@ -40,7 +40,9 @@ overwritten). Projections ride on the event line that made them knowable:
     🔴 5:40p · 4h 08m · Σ 7h 36m  clock out · session · running day total
 
 Day total = the Σ on the last 🔴 line. Live "right now" totals come from the
-local state file (menu bar icon/menu, or `uv run hue-clock-listener status`).
+local state file at `~/.local/state/hue_clock.json` (menu bar icon/menu, or
+`uv run hue-clock-listener status`). The permanent second-precision event
+log is `~/Library/Logs/hue-clock.log` — lost lines are replayable from it.
 
 **Strikes (tombstones):** menu bar → "Strike work time" lists today's
 sessions (`9:12a–12:40p · 3h 28m`); click one to tombstone the whole session.
