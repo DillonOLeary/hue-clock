@@ -1,18 +1,34 @@
-# capacities_scripts
+# Hue Clock
 
-Personal ingestion pipelines into [Capacities](https://capacities.io) ("Dillon's Mind Map" space).
+Clock in/out with a [Philips Hue](https://www.philips-hue.com) focus lamp —
+every transition is appended, event-sourcing style, to the daily note in
+[Capacities](https://capacities.io). A macOS menu bar app shows live status.
 
-## Hue clock in/out → daily note
+The lamp is the source of truth ("on" = clocked in). The Hue app maps a Smart
+Button to toggle the lamp; this tool never controls anything, it only projects
+lamp state into Capacities. Toggling via button, app, or Siri logs identically.
 
-**Run it:** double-click `~/Desktop/Hue Clock.app` — a 🟢/🔴 icon appears in the
-menu bar; click it for "In for 1h 23m" / today's totals; quit from the menu.
-The title is deliberately emoji-only to stay narrow: on notched MacBooks,
-macOS silently hides menu bar items that don't fit left of the notch — if the
-icon is missing, free up space (hide/quit another menu bar item).
-The app embeds the listener below and logs to `~/Library/Logs/hue-clock.log`.
-To auto-start at login: System Settings → General → Login Items → add the app.
-A single-instance lock prevents double-logging if the CLI listener is also started.
-All config (Capacities token, bridge IP/key, lamp name) lives in `.env` (chmod 600).
+## Quickstart
+
+```sh
+uv sync                                  # creates .venv, installs rumps/pyobjc
+cp .env.example .env && chmod 600 .env   # fill in the values (see Setup below)
+uv run hue-clock-listener lights         # find your focus lamp's exact name
+uv run hue-clock                         # launch the menu bar app
+```
+
+## Menu bar app
+
+`uv run hue-clock` puts a 🟢/🔴 icon in the menu bar; click it for
+"In for 1h 23m" / today's totals; quit from the menu. The title is
+deliberately emoji-only to stay narrow: on notched MacBooks, macOS silently
+hides menu bar items that don't fit left of the notch — if the icon is
+missing, free up space (hide/quit another menu bar item). The app embeds the
+listener and logs to `~/Library/Logs/hue-clock.log`. A single-instance lock
+prevents double-logging if the CLI listener is also started. All config
+(Capacities token, bridge IP/key, lamp name) lives in `.env` (chmod 600).
+
+## Design
 
 Logging is append-only (event-sourcing style — nothing in Capacities is ever
 overwritten). Projections ride on the event line that made them knowable:
@@ -23,7 +39,7 @@ overwritten). Projections ride on the event line that made them knowable:
     🔴 5:40p · 4h 08m · Σ 7h 36m  clock out · session · running day total
 
 Day total = the Σ on the last 🔴 line. Live "right now" totals come from the
-local state file (menu bar icon/menu, or `hue_clock_listener.py status`).
+local state file (menu bar icon/menu, or `uv run hue-clock-listener status`).
 
 **Strikes (tombstones):** menu bar → "Strike work time" lists today's
 sessions (`9:12a–12:40p · 3h 28m`); click one to tombstone the whole session.
@@ -42,66 +58,51 @@ and flush automatically on the next press, reconnect, or listener restart —
 the menu shows "⚠️ N lines queued — restart Capacities" until they land.
 Fix for a wedged app: fully quit and reopen Capacities.
 
-`hue_clock_listener.py` — the focus lamp is the source of truth: Hue Smart
-Button toggles the lamp (configured natively in the Hue app), and this listener
-subscribes to the bridge's CLIP v2 event stream and appends `🟢 Clocked in` /
-`🔴 Clocked out — <duration>` lines to the daily note on lamp transitions.
-The bridge keeps no event history, so the listener runs on the always-on Mac
-mini via launchd (`launchd/com.dillonoleary.hue-clock.plist`, KeepAlive).
-Missed transitions are logged with an "approx" marker on reconnect.
+The listener subscribes to the bridge's CLIP v2 event stream. The bridge
+keeps no event history — if the process is down, missed transitions are
+detected on startup (state file vs. live lamp state) and logged as a
+reconciliation entry, but their true timestamps are lost. Run it on an
+always-on machine.
 
-Setup:
-1. Register an app key (press the bridge's link button, then within ~30s):
-   `curl -sk -X POST https://<bridge-ip>/api -d '{"devicetype":"capacities_scripts#macmini","generateclientkey":true}'`
+## CLI
+
+```sh
+uv run hue-clock-listener lights   # list lights (find the focus lamp's name)
+uv run hue-clock-listener status   # print current clock state and today's totals
+uv run hue-clock-listener run      # headless listener, no menu bar (foreground)
+```
+
+## Setup
+
+1. Register a Hue app key (press the bridge's link button, then within ~30s):
+   `curl -sk -X POST https://<bridge-ip>/api -d '{"devicetype":"hue_clock#macmini","generateclientkey":true}'`
 2. Put `HUE_BRIDGE_IP`, `HUE_APP_KEY`, `FOCUS_LIGHT_NAME` in `.env`
-   (`python3 hue_clock_listener.py lights` lists light names).
+   (`uv run hue-clock-listener lights` lists light names). Add
+   `CAPACITIES_API_TOKEN` from Capacities → Settings → Capacities API
+   (rotate it there if it ever leaks).
 3. In the Hue app, map the Smart Button to toggle the focus lamp.
-4. Deploy: copy this directory to the mini, install the plist to
-   `~/Library/LaunchAgents/`, `launchctl load` it, and keep the mini awake
-   (`sudo pmset -a sleep 0`).
 
-## Screen Time → daily note
+## Autostart (launchd)
 
-`screentime_report.py` reads Apple Screen Time's synced store on this Mac
-(`$(getconf DARWIN_USER_DIR)/com.apple.ScreenTimeAgent/Store/RMAdminStore-Cloud.sqlite`)
-and appends a per-device, per-app summary to the matching Capacities daily note.
-With Screen Time's **Share Across Devices** enabled, the store includes iPhone/iPad
-usage too, so one Mac-side job covers every device. Apple only keeps ~30 days of
-Screen Time history — the daily notes become the permanent archive.
-
-### One-time setup
-
-1. **Full Disk Access** (System Settings → Privacy & Security → Full Disk Access):
-   - add **iTerm** (for running the script by hand) — restart iTerm afterwards
-   - add **/usr/bin/python3** (for the scheduled launchd run): press
-     ⌘⇧G in the file picker and type `/usr/bin/python3`
-2. Token lives in `.env` (git-ignored, chmod 600). Rotate it in
-   Capacities → Settings → Capacities API if it ever leaks.
-
-### Usage
+The launch agent runs the menu bar app (which embeds the listener — one
+process does everything) at login and keeps it alive:
 
 ```sh
-python3 screentime_report.py inspect            # sanity-check DB tables
-python3 screentime_report.py report             # print today's summary
-python3 screentime_report.py push               # append to today's daily note
-python3 screentime_report.py push --date yesterday
+cp launchd/com.dillonoleary.hue-clock.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dillonoleary.hue-clock.plist
+tail -f ~/Library/Logs/hue-clock.log
 ```
 
-`push` is idempotent per day — it skips if the daily note already has a
-"Screen Time —" section for that date.
+Notes:
 
-### Schedule (nightly 23:45)
-
-```sh
-cp launchd/com.dillonoleary.screentime-capacities.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.dillonoleary.screentime-capacities.plist
-launchctl start com.dillonoleary.screentime-capacities   # test-fire once
-tail -f ~/Library/Logs/screentime-capacities.log
-```
-
-Note: iPhone→Mac Screen Time sync (CloudKit) can lag by minutes-to-hours. If the
-23:45 numbers look short on phone-heavy days, switch the plist to a morning hour
-and change the program argument to `--date yesterday`.
+- The plist hardcodes absolute paths (`.venv/bin/hue-clock`, the project
+  directory as `WorkingDirectory` so `.env` is found). Edit them when
+  deploying to another machine or after moving/renaming the directory —
+  and rerun `uv sync` after a move so the `.venv` shebangs are regenerated.
+- With `KeepAlive`, "Quit Hue Clock" from the menu just gets respawned by
+  launchd. To actually stop it:
+  `launchctl bootout gui/$(id -u)/com.dillonoleary.hue-clock`
+- Keep an always-on host awake: `sudo pmset -a sleep 0`.
 
 ## Capacities API notes
 
@@ -110,5 +111,5 @@ and change the program argument to `--date yesterday`.
   bearer token bound to one space
 - OpenAPI spec: https://developers.capacities.io/openapi.json
 - Rate limit: 30 req/min per endpoint
-- `capacities_client.py` is a stdlib-only client: daily-note append, object
-  CRUD via markdown, search, block delete
+- `src/hue_clock/capacities.py` is a stdlib-only client: daily-note append,
+  object CRUD via markdown, search, block delete

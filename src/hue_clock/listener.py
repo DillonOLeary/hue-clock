@@ -15,15 +15,15 @@ transitions are detected on startup (state file vs. live lamp state) and
 logged as a reconciliation entry, but their true timestamps are lost. Run it
 on an always-on machine.
 
-Config in .env next to this script:
+Config in .env at the project root:
   HUE_BRIDGE_IP=10.11.83.17
   HUE_APP_KEY=<from link-button registration>
   FOCUS_LIGHT_NAME=<exact light name in the Hue app>
 
 Usage:
-  hue_clock_listener.py lights   # list lights (find the focus lamp's name)
-  hue_clock_listener.py status   # print current clock state and today's totals
-  hue_clock_listener.py run      # start the listener (foreground)
+  hue-clock-listener lights   # list lights (find the focus lamp's name)
+  hue-clock-listener status   # print current clock state and today's totals
+  hue-clock-listener run      # start the listener (foreground)
 """
 import datetime as dt
 import fcntl
@@ -36,7 +36,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from capacities_client import CapacitiesClient, _load_env
+from hue_clock.capacities import CapacitiesClient, _load_env
 
 STATE_FILE = Path.home() / ".local" / "state" / "hue_clock.json"
 LOCK_FILE = Path.home() / ".local" / "state" / "hue_clock.lock"

@@ -2,8 +2,8 @@
 """Menu bar wrapper around the Hue clock listener.
 
 Shows 🟢 + elapsed time while clocked in, 🔴 while out. The embedded listener
-does the actual work (see hue_clock_listener.py); this UI just reads the
-shared state file. Launched via the "Hue Clock.app" bundle on the Desktop;
+does the actual work (see listener.py); this UI just reads the shared state
+file. Launched at login via launchd (see launchd/com.dillonoleary.hue-clock.plist);
 quit from the menu. The single-instance lock in the listener prevents
 double-logging if a second copy is started.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import rumps
 
-import hue_clock_listener as hcl
+from hue_clock import listener as hcl
 
 LOG_PATH = Path.home() / "Library" / "Logs" / "hue-clock.log"
 
@@ -126,10 +126,14 @@ class HueClockApp(rumps.App):
             self.last_item.title = "Nothing logged yet"
 
 
-if __name__ == "__main__":
+def main():
     log = open(LOG_PATH, "a", buffering=1)
     sys.stdout = sys.stderr = log
     print(f"--- Hue Clock menu bar app started {dt.datetime.now().isoformat()}", flush=True)
     app = HueClockApp()
     app._refresh()
     app.run()
+
+
+if __name__ == "__main__":
+    main()

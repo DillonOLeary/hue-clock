@@ -4,7 +4,8 @@
 Docs: https://developers.capacities.io
 Tokens are created in the Capacities app (Settings > Capacities API), are bound
 to a single space, and need api:read / api:write scopes. The token is read from
-the CAPACITIES_API_TOKEN env var or a .env file next to this script.
+the CAPACITIES_API_TOKEN env var or a .env file found by walking up from the
+current directory (the project root, normally).
 """
 import json
 import os
@@ -19,13 +20,20 @@ API_VERSION = "0.1.0"
 
 
 def _load_env():
-    env_path = Path(__file__).resolve().parent / ".env"
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, val = line.partition("=")
-                os.environ.setdefault(key.strip(), val.strip())
+    """Load KEY=VALUE pairs from the nearest .env at or above the cwd.
+
+    Already-set environment variables always win. launchd runs get the
+    project root as WorkingDirectory, so the walk finds .env immediately.
+    """
+    for directory in (Path.cwd(), *Path.cwd().parents):
+        env_path = directory / ".env"
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, val = line.partition("=")
+                    os.environ.setdefault(key.strip(), val.strip())
+            return
 
 
 class CapacitiesClient:
