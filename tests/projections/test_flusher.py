@@ -170,6 +170,7 @@ class FlusherTest(unittest.TestCase):
 
         def confirmed_day2(line, day):
             return day == day2
+
         self.publisher.line_present = confirmed_day2
         self.flush()
 

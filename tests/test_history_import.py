@@ -64,9 +64,10 @@ class ImportHistoryTest(unittest.TestCase):
         self.import_log()
         summary = self.runtime.tracking.day_summary(DAY, dt.datetime(2026, 7, 21, 15))
         self.assertEqual(summary.session_count, 2)
-        session_one = (dt.datetime(2026, 7, 21, 11, 34, 51) - dt.datetime(2026, 7, 21, 11, 5, 7)).total_seconds()
-        session_two = (dt.datetime(2026, 7, 21, 14, 45, 8) - dt.datetime(2026, 7, 21, 13, 32)).total_seconds()
-        self.assertEqual(summary.worked_seconds, session_one + session_two - 30 * 60)
+        session_one = dt.datetime(2026, 7, 21, 11, 34, 51) - dt.datetime(2026, 7, 21, 11, 5, 7)
+        session_two = dt.datetime(2026, 7, 21, 14, 45, 8) - dt.datetime(2026, 7, 21, 13, 32)
+        worked = session_one.total_seconds() + session_two.total_seconds() - 30 * 60
+        self.assertEqual(summary.worked_seconds, worked)
         self.assertEqual(summary.struck_seconds, 30 * 60)
 
     def test_imported_lines_are_archived_not_queued(self):

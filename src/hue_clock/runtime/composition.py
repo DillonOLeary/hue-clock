@@ -30,9 +30,10 @@ def persistence_env() -> dict[str, str]:
 
 
 class TrackerRuntime:
-    """Composition root for the running app: owns the leader→follower system,
-    serializes all writes behind one lock, and wakes the flusher after every
-    recorded change.
+    """Composition root for the running app.
+
+    Owns the leader→follower system, serializes all writes behind one lock,
+    and wakes the flusher after every recorded change.
     """
 
     def __init__(self, runner: SingleThreadedRunner) -> None:

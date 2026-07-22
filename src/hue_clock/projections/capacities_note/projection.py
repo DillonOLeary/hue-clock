@@ -12,6 +12,8 @@ from hue_clock.domain.work_day import WorkDay
 from hue_clock.projections.capacities_note.daily_note import DailyNote
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from eventsourcing.persistence import JSONTranscoder
 
 PENDING_WINDOW_DAYS = 7
@@ -66,9 +68,9 @@ class CapacitiesNoteProjection(ProcessApplication):
             pending += len(note.queue)
             if head is None and note.head is not None:
                 head = note.head
-            if note.last_confirmed_at is not None:
-                if last_confirmed is None or note.last_confirmed_at > last_confirmed:
-                    last_confirmed = note.last_confirmed_at
+            confirmed = note.last_confirmed_at
+            if confirmed is not None and (last_confirmed is None or confirmed > last_confirmed):
+                last_confirmed = confirmed
         return QueueStatus(
             pending=pending,
             head_sent=head.is_sent if head else False,
@@ -76,7 +78,7 @@ class CapacitiesNoteProjection(ProcessApplication):
             last_confirmed_at=last_confirmed,
         )
 
-    def _recent_notes(self, today: dt.date):
+    def _recent_notes(self, today: dt.date) -> Iterator[tuple[dt.date, DailyNote]]:
         for offset in range(PENDING_WINDOW_DAYS, -1, -1):
             day = today - dt.timedelta(days=offset)
             note = self.note(day)

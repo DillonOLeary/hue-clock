@@ -22,9 +22,11 @@ class FakeClient:
         return [{"id": "note-1", "title": "2026-07-21T00:00:00.000Z"}]
 
     def get_object(self, object_id):
-        return {"blocks": {"root": [
-            {"id": f"b{i}", "tokens": [{"text": t}]} for i, t in enumerate(self.texts)
-        ]}}
+        return {
+            "blocks": {
+                "root": [{"id": f"b{i}", "tokens": [{"text": t}]} for i, t in enumerate(self.texts)]
+            }
+        }
 
     def delete_block(self, object_id, block_id):
         self.deleted.append(block_id)
@@ -67,12 +69,14 @@ class ScrubTest(unittest.TestCase):
         return removed, client.deleted
 
     def test_adjacent_duplicates_deleted_keeping_first(self):
-        removed, deleted = self.scrub([
-            "🔴 12:50p · 11m",
-            "🟢 2:44p · 1h 53m break",
-            "🟢 2:44p · 1h 53m break",
-            "🟢 2:44p · 1h 53m break",
-        ])
+        removed, deleted = self.scrub(
+            [
+                "🔴 12:50p · 11m",
+                "🟢 2:44p · 1h 53m break",
+                "🟢 2:44p · 1h 53m break",
+                "🟢 2:44p · 1h 53m break",
+            ]
+        )
         self.assertEqual(removed, 2)
         self.assertEqual(deleted, ["b2", "b3"])
 
@@ -81,9 +85,14 @@ class ScrubTest(unittest.TestCase):
         self.assertEqual(removed, 0)
 
     def test_user_prose_ignored_and_never_deleted(self):
-        removed, deleted = self.scrub([
-            "🟢 2:44p", "thinking about lunch", "thinking about lunch", "🟢 2:44p",
-        ])
+        removed, deleted = self.scrub(
+            [
+                "🟢 2:44p",
+                "thinking about lunch",
+                "thinking about lunch",
+                "🟢 2:44p",
+            ]
+        )
         self.assertEqual(removed, 1)
         self.assertEqual(deleted, ["b3"])
 

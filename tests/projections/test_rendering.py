@@ -36,17 +36,14 @@ class ClockOutLineTest(unittest.TestCase):
         self.assertEqual(clock_out_line(ledger, at(12, 40)), "🔴 12:40p · 3h 28m")
 
     def test_later_clock_outs_add_the_running_day_total(self):
-        ledger = (
-            DayLedger()
-            .clock_in(at(9, 12)).clock_out(at(12, 40))
-            .clock_in(at(13, 32))
-        )
+        ledger = DayLedger().clock_in(at(9, 12)).clock_out(at(12, 40)).clock_in(at(13, 32))
         self.assertEqual(clock_out_line(ledger, at(17, 40)), "🔴 5:40p · 4h 08m · Σ 7h 36m")
 
     def test_day_total_subtracts_struck_time(self):
         ledger = (
             DayLedger()
-            .clock_in(at(9)).clock_out(at(10))
+            .clock_in(at(9))
+            .clock_out(at(10))
             .clock_in(at(11))
             .strike(TimeSpan(at(9), at(9, 30)))
         )

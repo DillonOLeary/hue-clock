@@ -15,6 +15,7 @@ rerun this script after moving the repo. The icon (a pendant lamp casting a
 green "clocked in" glow on deep focus blue) is rendered from code here; no
 image assets are checked in.
 """
+
 import plistlib
 import shutil
 import subprocess
@@ -33,6 +34,7 @@ GREEN = (72, 235, 130)
 
 def render_icon() -> Image.Image:
     s = 1024 * SS
+
     def p(v):
         return round(v * SS)  # 1024-grid coordinate → supersampled px
 
@@ -64,44 +66,57 @@ def render_icon() -> Image.Image:
     cx = p(512)
 
     # Cone of light, dome edge down to the floor pool
-    img = layer(lambda d: d.polygon(
-        [(cx - p(128), p(408)), (cx + p(128), p(408)),
-         (cx + p(312), p(816)), (cx - p(312), p(816))],
-        fill=(190, 255, 215, 42)))
-    img = layer(lambda d: d.polygon(
-        [(cx - p(112), p(408)), (cx + p(112), p(408)),
-         (cx + p(216), p(816)), (cx - p(216), p(816))],
-        fill=(210, 255, 228, 36)))
+    img = layer(
+        lambda d: d.polygon(
+            [
+                (cx - p(128), p(408)),
+                (cx + p(128), p(408)),
+                (cx + p(312), p(816)),
+                (cx - p(312), p(816)),
+            ],
+            fill=(190, 255, 215, 42),
+        )
+    )
+    img = layer(
+        lambda d: d.polygon(
+            [
+                (cx - p(112), p(408)),
+                (cx + p(112), p(408)),
+                (cx + p(216), p(816)),
+                (cx - p(216), p(816)),
+            ],
+            fill=(210, 255, 228, 36),
+        )
+    )
 
     # Light pool on the floor
-    img = layer(lambda d: d.ellipse(
-        [cx - p(330), p(772), cx + p(330), p(852)], fill=(*GREEN, 95)))
-    img = layer(lambda d: d.ellipse(
-        [cx - p(212), p(786), cx + p(212), p(838)], fill=(150, 255, 190, 120)))
+    img = layer(lambda d: d.ellipse([cx - p(330), p(772), cx + p(330), p(852)], fill=(*GREEN, 95)))
+    img = layer(
+        lambda d: d.ellipse([cx - p(212), p(786), cx + p(212), p(838)], fill=(150, 255, 190, 120))
+    )
 
     # Bulb glow halos (drawn before the dome so it caps them)
-    img = layer(lambda d: d.ellipse(
-        [cx - p(95), p(430 - 95), cx + p(95), p(430 + 95)], fill=(*GREEN, 50)))
-    img = layer(lambda d: d.ellipse(
-        [cx - p(68), p(430 - 68), cx + p(68), p(430 + 68)], fill=(*GREEN, 95)))
+    img = layer(
+        lambda d: d.ellipse([cx - p(95), p(430 - 95), cx + p(95), p(430 + 95)], fill=(*GREEN, 50))
+    )
+    img = layer(
+        lambda d: d.ellipse([cx - p(68), p(430 - 68), cx + p(68), p(430 + 68)], fill=(*GREEN, 95))
+    )
 
     draw = ImageDraw.Draw(img)
 
     # Cord
-    draw.rounded_rectangle([cx - p(8), p(150), cx + p(8), p(340)],
-                           radius=p(8), fill=WHITE)
+    draw.rounded_rectangle([cx - p(8), p(150), cx + p(8), p(340)], radius=p(8), fill=WHITE)
 
     # Dome (half-disc, flat edge down) with a rim lip
-    draw.pieslice([cx - p(160), p(380 - 160), cx + p(160), p(380 + 160)],
-                  start=180, end=360, fill=WHITE)
-    draw.rounded_rectangle([cx - p(168), p(366), cx + p(168), p(398)],
-                           radius=p(14), fill=WHITE)
+    draw.pieslice(
+        [cx - p(160), p(380 - 160), cx + p(160), p(380 + 160)], start=180, end=360, fill=WHITE
+    )
+    draw.rounded_rectangle([cx - p(168), p(366), cx + p(168), p(398)], radius=p(14), fill=WHITE)
 
     # Bulb: bright green core with white-hot center
-    draw.ellipse([cx - p(48), p(430 - 48), cx + p(48), p(430 + 48)],
-                 fill=(*GREEN, 255))
-    draw.ellipse([cx - p(24), p(424 - 24), cx + p(24), p(424 + 24)],
-                 fill=(235, 255, 242, 255))
+    draw.ellipse([cx - p(48), p(430 - 48), cx + p(48), p(430 + 48)], fill=(*GREEN, 255))
+    draw.ellipse([cx - p(24), p(424 - 24), cx + p(24), p(424 + 24)], fill=(235, 255, 242, 255))
 
     return img.resize((1024, 1024), Image.LANCZOS)
 
@@ -115,9 +130,9 @@ def build_icns(master: Image.Image, icns_path: Path) -> None:
                 side = base * scale
                 suffix = "@2x" if scale == 2 else ""
                 master.resize((side, side), Image.LANCZOS).save(
-                    iconset / f"icon_{base}x{base}{suffix}.png")
-        subprocess.run(["iconutil", "-c", "icns", str(iconset),
-                        "-o", str(icns_path)], check=True)
+                    iconset / f"icon_{base}x{base}{suffix}.png"
+                )
+        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icns_path)], check=True)
 
 
 def build_app() -> None:
@@ -131,30 +146,29 @@ def build_app() -> None:
     build_icns(render_icon(), resources / "AppIcon.icns")
 
     with open(APP / "Contents" / "Info.plist", "wb") as f:
-        plistlib.dump({
-            "CFBundleDevelopmentRegion": "en",
-            "CFBundleDisplayName": "Hue Clock",
-            "CFBundleExecutable": "hue-clock",
-            "CFBundleIconFile": "AppIcon",
-            "CFBundleIdentifier": "com.dillonoleary.hue-clock",
-            "CFBundleInfoDictionaryVersion": "6.0",
-            "CFBundleName": "Hue Clock",
-            "CFBundlePackageType": "APPL",
-            "CFBundleShortVersionString": "0.1.0",
-            "CFBundleVersion": "0.1.0",
-            "LSMinimumSystemVersion": "12.0",
-            # Regular app on purpose: the Dock icon shows while running, so
-            # start/stop is visible and right-click → Quit works.
-            "LSUIElement": False,
-            "NSHighResolutionCapable": True,
-        }, f)
+        plistlib.dump(
+            {
+                "CFBundleDevelopmentRegion": "en",
+                "CFBundleDisplayName": "Hue Clock",
+                "CFBundleExecutable": "hue-clock",
+                "CFBundleIconFile": "AppIcon",
+                "CFBundleIdentifier": "com.dillonoleary.hue-clock",
+                "CFBundleInfoDictionaryVersion": "6.0",
+                "CFBundleName": "Hue Clock",
+                "CFBundlePackageType": "APPL",
+                "CFBundleShortVersionString": "0.1.0",
+                "CFBundleVersion": "0.1.0",
+                "LSMinimumSystemVersion": "12.0",
+                # Regular app on purpose: the Dock icon shows while running, so
+                # start/stop is visible and right-click → Quit works.
+                "LSUIElement": False,
+                "NSHighResolutionCapable": True,
+            },
+            f,
+        )
 
     launcher = macos / "hue-clock"
-    launcher.write_text(
-        "#!/bin/sh\n"
-        f'cd "{REPO}" || exit 1\n'
-        f'exec "{REPO}/.venv/bin/hue-clock"\n'
-    )
+    launcher.write_text(f'#!/bin/sh\ncd "{REPO}" || exit 1\nexec "{REPO}/.venv/bin/hue-clock"\n')
     launcher.chmod(0o755)
     print(f"built {APP}")
     print("drag it to the Dock; click to start, quit from the menu bar or Dock")

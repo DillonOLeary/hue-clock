@@ -40,8 +40,10 @@ class ProjectionTest(unittest.TestCase):
 
     def test_break_math_spans_the_whole_day_fold(self):
         self.record(
-            (True, at(9, 12)), (False, at(12, 40)),
-            (True, at(13, 32)), (False, at(17, 40)),
+            (True, at(9, 12)),
+            (False, at(12, 40)),
+            (True, at(13, 32)),
+            (False, at(17, 40)),
         )
         note = self.notes.note(DAY)
         self.assertEqual(note.queue[2].text, "🟢 1:32p · 52m break")

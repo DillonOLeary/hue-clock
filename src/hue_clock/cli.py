@@ -1,5 +1,7 @@
-"""Clock in/out by lamp: observe Hue focus-lamp transitions, record them as
-domain events, and project them into the Capacities daily note.
+"""Observe Hue focus-lamp transitions and project them into Capacities.
+
+Each transition is recorded as a domain event, then projected into the
+Capacities daily note.
 
 Usage:
   hue-clock-listener lights            # list lights (find the focus lamp's name)
@@ -8,6 +10,7 @@ Usage:
   hue-clock-listener dedupe [DATE]     # delete duplicated clock lines (default: today)
   hue-clock-listener import-history    # seed the event store from the legacy log
 """
+
 import datetime as dt
 import sys
 
@@ -42,11 +45,16 @@ def cmd_status() -> None:
 
     summary = tracking.day_summary(now.date(), now)
     if summary:
-        struck = (f", struck {format_duration(summary.struck_seconds)}"
-                  if summary.struck_seconds >= 60 else "")
-        print(f"today: worked {format_duration(summary.worked_seconds)} over "
-              f"{summary.session_count} session(s), "
-              f"away {format_duration(summary.away_seconds)}{struck}")
+        struck = (
+            f", struck {format_duration(summary.struck_seconds)}"
+            if summary.struck_seconds >= 60
+            else ""
+        )
+        print(
+            f"today: worked {format_duration(summary.worked_seconds)} over "
+            f"{summary.session_count} session(s), "
+            f"away {format_duration(summary.away_seconds)}{struck}"
+        )
 
     queue = CapacitiesNoteProjection(env=persistence_env()).queue_status(now.date())
     if queue.has_pending:
@@ -66,12 +74,13 @@ def cmd_dedupe(date_str=None) -> None:
 
 
 def cmd_import_history(log_path=None) -> None:
-    from hue_clock.history_import import import_history
+    # Imported lazily: the one-off importer isn't needed on the hot CLI paths.
+    from hue_clock.history_import import import_history  # noqa: PLC0415
 
     import_history(log_path)
 
 
-def _bridge(config=None):
+def _bridge(config=None) -> HueBridge:
     config = config or load_config()
     return HueBridge(
         require(config.bridge_ip, "HUE_BRIDGE_IP"),
@@ -79,7 +88,7 @@ def _bridge(config=None):
     )
 
 
-def _publisher(config=None):
+def _publisher(config=None) -> CapacitiesNotePublisher:
     config = config or load_config()
     token = require(config.capacities_token, "CAPACITIES_API_TOKEN")
     return CapacitiesNotePublisher(CapacitiesClient(token))

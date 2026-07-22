@@ -55,6 +55,20 @@ ignore = [
     "N818",
     # Handled by the formatter.
     "COM812",
+    # Parameter annotations are not enforced — there is no type checker in the
+    # project, so mandating them on framework callbacks and duck-typed clients
+    # is cost without payoff. Return types (ANN2xx) stay enabled.
+    "ANN001", "ANN002",
+    # urllib opens hardcoded https endpoints (the Hue bridge, the Capacities API).
+    "S310",
+    # Display thresholds (60s, 2 resends) are self-evident where they appear.
+    "PLR2004",
+    # `line = line.strip()` and friends — reusing the loop name is idiomatic.
+    "PLW2901",
+    # open() is appropriate for the raw file descriptors held here.
+    "PTH123",
+    # Scripts are run via `uv run`, not executed directly.
+    "EXE001",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -65,6 +79,8 @@ ignore = [
     "SLF001",   # tests reach into internals on purpose
     "PLR2004",  # literal expected-values are clearer inline
 ]
+"scripts/**" = ["S603", "S607", "ANN"]  # build tooling: trusted commands, throwaway helpers
+"src/hue_clock/menubar.py" = ["SLF001"]  # rumps internals (_menu) and the app's own _refresh
 
 [tool.ruff.format]
 docstring-code-format = true

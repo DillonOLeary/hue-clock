@@ -54,8 +54,10 @@ class DayLedgerTest(unittest.TestCase):
     def test_away_seconds_sums_gaps_between_sessions(self):
         ledger = (
             DayLedger()
-            .clock_in(at(9)).clock_out(at(10))
-            .clock_in(at(11)).clock_out(at(12))
+            .clock_in(at(9))
+            .clock_out(at(10))
+            .clock_in(at(11))
+            .clock_out(at(12))
             .clock_in(at(14))
         )
         self.assertEqual(ledger.away_seconds(), 3 * 3600)
@@ -70,8 +72,10 @@ class DayLedgerTest(unittest.TestCase):
     def test_strike_subtracts_only_overlap_with_sessions(self):
         ledger = (
             DayLedger()
-            .clock_in(at(9)).clock_out(at(10))
-            .clock_in(at(11)).clock_out(at(12))
+            .clock_in(at(9))
+            .clock_out(at(10))
+            .clock_in(at(11))
+            .clock_out(at(12))
             .strike(span(9, 12))
         )
         self.assertEqual(ledger.worked_seconds(at(13)), 0)
@@ -79,9 +83,7 @@ class DayLedgerTest(unittest.TestCase):
 
     def test_overlapping_strikes_never_double_count(self):
         ledger = (
-            DayLedger()
-            .clock_in(at(9)).clock_out(at(12))
-            .strike(span(9, 11)).strike(span(10, 12))
+            DayLedger().clock_in(at(9)).clock_out(at(12)).strike(span(9, 11)).strike(span(10, 12))
         )
         self.assertEqual(ledger.struck_seconds(at(13)), 3 * 3600)
         self.assertEqual(ledger.worked_seconds(at(13)), 0)
@@ -91,11 +93,7 @@ class DayLedgerTest(unittest.TestCase):
         self.assertEqual(ledger.closed_total_seconds(), 3600)
 
     def test_closed_total_subtracts_struck_overlap(self):
-        ledger = (
-            DayLedger()
-            .clock_in(at(9)).clock_out(at(11))
-            .strike(span(10, 11))
-        )
+        ledger = DayLedger().clock_in(at(9)).clock_out(at(11)).strike(span(10, 11))
         self.assertEqual(ledger.closed_total_seconds(), 3600)
 
     def test_struck_coverage_of_a_single_session(self):

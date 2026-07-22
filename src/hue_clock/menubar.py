@@ -5,6 +5,7 @@ issues commands and reads queries through TrackerRuntime. Launched by hand —
 `uv run hue-clock`, or the dockable "Hue Clock.app" built by
 scripts/make_app.py. Quit from the menu (or the Dock icon).
 """
+
 import datetime as dt
 import sys
 import threading
@@ -47,13 +48,17 @@ class HueClockApp(rumps.App):
             except Exception as e:
                 print(f"strike failed: {e}", flush=True)
             self._refresh()
+
         threading.Thread(target=run, daemon=True).start()
 
     def _strike_custom(self, _sender) -> None:
         window = rumps.Window(
             message="Minutes to strike, counting back from now:",
-            title="Strike work time", default_text="30",
-            ok="Strike", cancel=True, dimensions=(160, 24),
+            title="Strike work time",
+            default_text="30",
+            ok="Strike",
+            cancel=True,
+            dimensions=(160, 24),
         )
         response = window.run()
         if response.clicked:
@@ -66,6 +71,7 @@ class HueClockApp(rumps.App):
 
     def _rebuild_strike_menu(self, now) -> None:
         """One entry per session today; click to tombstone the whole session.
+
         Already-struck sessions show ⚫ and are disabled (no callback).
         """
         if self.strike_menu._menu is not None:  # rumps: no NSMenu until first add
@@ -75,15 +81,20 @@ class HueClockApp(rumps.App):
             self.strike_menu.add(rumps.MenuItem("No sessions yet"))
         for index, session in enumerate(overviews):
             end_txt = format_clock(session.ended_at) if session.ended_at else "now"
-            label = (f"{format_clock(session.started_at)}–{end_txt}"
-                     f" · {format_duration(session.seconds)}")
+            label = (
+                f"{format_clock(session.started_at)}–{end_txt} · {format_duration(session.seconds)}"
+            )
             if session.fully_struck:
                 self.strike_menu.add(rumps.MenuItem(f"⚫ {label}"))
             else:
-                self.strike_menu.add(rumps.MenuItem(
-                    label,
-                    callback=lambda _s, i=index: self._spawn_strike(self.runtime.strike_session, i),
-                ))
+                self.strike_menu.add(
+                    rumps.MenuItem(
+                        label,
+                        callback=lambda _s, i=index: self._spawn_strike(
+                            self.runtime.strike_session, i
+                        ),
+                    )
+                )
         self.strike_menu.add(rumps.separator)
         self.strike_menu.add(rumps.MenuItem("Custom…", callback=self._strike_custom))
 
@@ -109,8 +120,10 @@ class HueClockApp(rumps.App):
         summary = self.runtime.day_summary(now)
         if summary:
             plural = "s" if summary.session_count != 1 else ""
-            title = (f"Today: {format_duration(summary.worked_seconds)} · "
-                     f"{summary.session_count} session{plural}")
+            title = (
+                f"Today: {format_duration(summary.worked_seconds)} · "
+                f"{summary.session_count} session{plural}"
+            )
             if summary.struck_seconds >= 60:
                 title += f" · {format_duration(summary.struck_seconds)} struck"
             self.today_item.title = title
@@ -136,7 +149,7 @@ class HueClockApp(rumps.App):
 
 
 def main() -> None:
-    log = open(LOG_FILE, "a", buffering=1)
+    log = open(LOG_FILE, "a", buffering=1)  # noqa: SIM115 — redirect target for the process lifetime
     sys.stdout = sys.stderr = log
     print(f"--- Hue Clock menu bar app started {dt.datetime.now().isoformat()}", flush=True)
     app = HueClockApp()

@@ -10,8 +10,10 @@ from hue_clock.runtime.note_flusher_loop import FlusherLoop
 
 
 def start_daemon() -> tuple[object, TrackerRuntime, HueListener]:
-    """The full tracking stack: instance lock, event-sourced runtime,
-    flusher thread, and a ready-to-run bridge listener.
+    """Assemble the full tracking stack.
+
+    Wires the instance lock, event-sourced runtime, flusher thread, and a
+    ready-to-run bridge listener.
     """
     lock = acquire_single_instance_lock()
     config = load_config()

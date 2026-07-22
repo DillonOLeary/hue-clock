@@ -4,6 +4,7 @@ Docs: https://developers.capacities.io
 Tokens are created in the Capacities app (Settings > Capacities API), are bound
 to a single space, and need api:read / api:write scopes.
 """
+
 import json
 import time
 import urllib.error
@@ -13,12 +14,14 @@ from urllib.parse import urlencode
 BASE_URL = "https://api.capacities.io"
 API_VERSION = "0.1.0"
 
+Json = dict | list | None
+
 
 class CapacitiesClient:
     def __init__(self, token: str) -> None:
         self.token = token
 
-    def _request(self, method, path, body=None, params=None):
+    def _request(self, method, path, body=None, params=None) -> Json:
         url = f"{BASE_URL}{path}"
         if params:
             url += "?" + urlencode(params)
@@ -51,13 +54,13 @@ class CapacitiesClient:
                 raise
         return None
 
-    def space(self):
+    def space(self) -> Json:
         return self._request("GET", "/space")
 
-    def structures(self):
+    def structures(self) -> list:
         return self._request("GET", "/space/structures")["structures"]
 
-    def search(self, query, structure_ids=None, limit=None):
+    def search(self, query, structure_ids=None, limit=None) -> list:
         body = {"query": query}
         if structure_ids:
             body["structureIds"] = structure_ids
@@ -65,21 +68,21 @@ class CapacitiesClient:
             body["limit"] = limit
         return self._request("POST", "/objects/search", body)["results"]
 
-    def get_object(self, object_id):
+    def get_object(self, object_id) -> Json:
         return self._request("GET", "/object", params={"id": object_id})
 
-    def append_daily_note(self, markdown, date=None, no_timestamp=True):
+    def append_daily_note(self, markdown, date=None, no_timestamp=True) -> Json:
         body = {"markdown": markdown, "noTimeStamp": no_timestamp}
         if date:
             body["date"] = f"{date}T00:00:00.000Z"
         return self._request("POST", "/blocks/daily-note/append", body)
 
-    def create_object_from_markdown(self, structure_id, markdown):
+    def create_object_from_markdown(self, structure_id, markdown) -> Json:
         return self._request(
             "POST", "/object/markdown", {"structureId": structure_id, "markdown": markdown}
         )
 
-    def delete_block(self, object_id, block_id):
+    def delete_block(self, object_id, block_id) -> Json:
         return self._request(
             "DELETE", "/block", params={"objectId": object_id, "blockId": block_id}
         )

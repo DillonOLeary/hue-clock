@@ -5,6 +5,7 @@ implementation kept; everything else in the log is diagnostics. Imported
 transitions carry IMPORTED provenance, so the projection archives them into
 its ledger without re-publishing lines that are already in Capacities.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -55,9 +56,7 @@ def import_history(log_path: str | None = None, runtime: TrackerRuntime | None =
         runtime = TrackerRuntime.start()
     try:
         skipped = {
-            day
-            for day in {t.at.date() for t in transitions}
-            if runtime.tracking.day_exists(day)
+            day for day in {t.at.date() for t in transitions} if runtime.tracking.day_exists(day)
         }
         imported = 0
         for transition in transitions:

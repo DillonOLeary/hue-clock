@@ -1,6 +1,7 @@
 """The whole stack against real SQLite: a scripted bridge produces lamp
 events, the system records them, the flusher publishes them, and a process
 restart finds everything still there."""
+
 import contextlib
 import datetime as dt
 import io

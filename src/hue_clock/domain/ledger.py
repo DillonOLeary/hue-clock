@@ -119,9 +119,7 @@ class DayLedger:
 
     def closed_total_seconds(self) -> float:
         spans = [TimeSpan(s.started_at, s.ended_at) for s in self.closed_sessions]
-        return sum(span.seconds for span in spans) - overlap_seconds(
-            spans, self.merged_strikes
-        )
+        return sum(span.seconds for span in spans) - overlap_seconds(spans, self.merged_strikes)
 
     def struck_coverage(self, session: Session, now: dt.datetime) -> float:
         return overlap_seconds([session.realized(now)], self.merged_strikes)

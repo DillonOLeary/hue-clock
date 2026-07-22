@@ -52,7 +52,7 @@ class CapacitiesNotePublisher:
                 previous = text
         return removed
 
-    def _day_blocks(self, day: dt.date):
+    def _day_blocks(self, day: dt.date) -> tuple[str, list[tuple[str | None, str]]] | None:
         date_str = day.isoformat()
         for result in self.client.search(date_str, structure_ids=["RootDailyNote"], limit=5):
             if date_str not in result.get("title", ""):

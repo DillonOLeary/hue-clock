@@ -39,7 +39,9 @@ class HueListener:
                 self.runtime.record_lamp_state(item["on"]["on"], dt.datetime.now())
 
     def _reconcile(self) -> None:
-        """The lamp may have changed while we weren't listening; the true
+        """Record any change missed while disconnected.
+
+        The lamp may have changed while we weren't listening; the true
         transition time is unrecoverable, so the record is marked approximate.
         """
         live_on = self.bridge.light_is_on(self.light_id)

@@ -47,9 +47,7 @@ class DailyNote(Aggregate):
     def head(self) -> QueuedLine | None:
         return self.queue[0] if self.queue else None
 
-    def record_transition(
-        self, kind: str, at: dt.datetime, provenance: Provenance
-    ) -> str | None:
+    def record_transition(self, kind: str, at: dt.datetime, provenance: Provenance) -> str | None:
         queued = None
         if provenance in PUBLISHED_PROVENANCES:
             approx = provenance is Provenance.RECONCILED
