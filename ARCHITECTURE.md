@@ -23,7 +23,7 @@ appended, and derived views catch up.
 │                         │────────▶│ (supporting)                     │
 │  WorkDay aggregate      │  pipe   │  DailyNote aggregate             │
 │  sessions, strikes,     │         │  line rendering, outbox,         │
-│  rollover, totals       │         │  publish/confirm/scrub           │
+│  rollover, totals       │         │  write-only publish              │
 └─────────────────────────┘         └──────────────────────────────────┘
 ```
 
@@ -116,6 +116,30 @@ The failure taught a distinction the current design encodes:
 - Publishing is at-least-once + idempotent boundary; the event log is
   exactly-once. Each guarantee lives where it is actually achievable.
 
+### Postscript: read-back removed (2026-07-23)
+
+Read-back confirmation was later retired entirely, and publishing is now
+write-only: a 200 pops the queued line, an error keeps it for the next pass.
+Two things made read-back untenable:
+
+- **The note is hand-edited.** Confirmation assumed the note mirrors the
+  outbox, but the note is the user's own document — any manual edit means a
+  queued line's exact text is never found, so it resends forever.
+- **Markdown doesn't round-trip.** The API returns `*(approx)*` as rendered
+  token text (`(approx)`, no asterisks), so exact-match confirmation of any
+  markdown line could never succeed — four lines wedged the queue before this
+  was caught.
+
+The lesson: read-back only works when you own both sides of the mirror. Here we
+don't, so the design collapses to plain at-least-once. The retired events
+(`HeadSent`, `HeadResent`, `DuplicatesScrubbed`) are **kept in the aggregate**,
+uncalled — the `eventsourcing` library resolves each stored event back to its
+nested class and replays its method, so deleting them would break replay of
+existing stores. `LineQueued` also gained an optional `at` field
+(backward-compatible: old events carry only `text`). Both are everyday examples
+of schema evolution in an event-sourced system: you retire behavior without
+retiring history.
+
 ## Runtime shape
 
 ```
@@ -156,10 +180,10 @@ stale save. Reads are lock-free (SQLite WAL).
 | `Opened` | `day` | |
 | `TransitionNoted` | `kind, at` | extends the rendering ledger |
 | `StrikeNoted` | `start, end` | extends the rendering ledger |
-| `LineQueued` | `text` | enters the outbox |
-| `HeadSent` / `HeadResent` | `at` | publish attempts (bookkeeping) |
-| `HeadConfirmed` | `at` | read-back verified; queue advances |
-| `DuplicatesScrubbed` | `at, removed` | post-incident cleanup ran |
+| `LineQueued` | `text, at` | enters the outbox (`at` = when queued) |
+| `HeadConfirmed` | `at` | published (200 received); queue advances |
+| `HeadSent` / `HeadResent` | `at` | historical (read-back era, retired 2026-07-23) |
+| `DuplicatesScrubbed` | `at, removed` | historical (read-back era, retired 2026-07-23) |
 
 ## What the log file is now
 

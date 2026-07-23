@@ -62,17 +62,18 @@ shows up in later Σ values and menu totals. Only overlap with clocked-in
 sessions is subtracted (striking across a break can't over-subtract), and
 overlapping strikes merge.
 
-**Publishing to Capacities** is outbox-based: each line is committed to the
-event store atomically with the transition that caused it, then a dedicated
-flusher thread publishes it. A 200 is trusted; confirmation happens by
-read-back on later passes. An unconfirmed line is re-sent only after staying
-verifiably absent for a grace period (10 min, doubling per resend), so a
-lagging Capacities read API can't cause duplicate spam, while genuinely
-clobbered appends (a wedged desktop app can silently destroy API appends —
-fully quit and reopen Capacities to unwedge it) still get repaired. After a
-resent line confirms, adjacent duplicate clock lines are scrubbed
-automatically. The menu shows ⏳/⚠️ with the queue depth until lines land.
-The full incident story behind this design is in ARCHITECTURE.md.
+**Publishing to Capacities** is outbox-based and write-only: each line is
+committed to the event store atomically with the transition that caused it,
+then a dedicated flusher thread appends it. A 200 pops the line; any error
+keeps it queued and the next pass (every 60s) retries — at-least-once. The app
+never reads or edits the note, so the note is yours to annotate freely; it will
+never be overwritten or reconciled against the outbox. A duplicate is possible
+only if the process dies in the window between the append's 200 and the local
+commit — rare, and cleaned up by hand. The menu shows ⏳ with the queue depth
+while lines drain, escalating to ⚠️ if a line stays queued past a flush
+interval (appends are failing — check that Capacities is reachable). The full
+story behind this design, including why read-back was removed, is in
+ARCHITECTURE.md.
 
 The listener subscribes to the bridge's CLIP v2 event stream. The bridge
 keeps no event history — if the process is down, missed transitions are
@@ -86,7 +87,6 @@ always-on machine.
 uv run hue-clock-listener lights           # list lights (find the focus lamp's name)
 uv run hue-clock-listener status           # current clock state and today's totals
 uv run hue-clock-listener run              # headless listener, no menu bar (foreground)
-uv run hue-clock-listener dedupe [DATE]    # delete duplicated clock lines (default: today)
 uv run hue-clock-listener import-history   # one-off: seed the event store from the legacy log
 ```
 

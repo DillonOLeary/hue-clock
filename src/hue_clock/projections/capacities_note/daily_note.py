@@ -23,6 +23,11 @@ PUBLISHED_PROVENANCES = (Provenance.OBSERVED, Provenance.RECONCILED)
 @dataclass
 class QueuedLine:
     text: str
+    first_queued_at: dt.datetime | None = None
+    # Historical: read-back era, retired 2026-07-23. `sent_at`/`resends` are no
+    # longer written by new appends; they survive so old HeadSent/HeadResent
+    # events still replay, and the flusher's one-time migration guard reads
+    # `is_sent` to drain lines that already got a 200 without re-appending them.
     sent_at: dt.datetime | None = None
     resends: int = 0
 
@@ -47,26 +52,39 @@ class DailyNote(Aggregate):
     def head(self) -> QueuedLine | None:
         return self.queue[0] if self.queue else None
 
-    def record_transition(self, kind: str, at: dt.datetime, provenance: Provenance) -> str | None:
+    def record_transition(
+        self, kind: str, at: dt.datetime, provenance: Provenance, queued_at: dt.datetime
+    ) -> str | None:
         queued = None
         if provenance in PUBLISHED_PROVENANCES:
             approx = provenance is Provenance.RECONCILED
             render = clock_in_line if kind == "in" else clock_out_line
             queued = render(self.ledger, at, approx)
-            self._line_queued(queued)
+            self._line_queued(queued, queued_at)
         self._transition_noted(kind, at)
         return queued
 
     def record_strike(
-        self, start: dt.datetime, end: dt.datetime, provenance: Provenance
+        self,
+        start: dt.datetime,
+        end: dt.datetime,
+        provenance: Provenance,
+        queued_at: dt.datetime,
     ) -> str | None:
         queued = None
         if provenance in PUBLISHED_PROVENANCES:
             queued = strike_line(start, end)
-            self._line_queued(queued)
+            self._line_queued(queued, queued_at)
         self._strike_noted(start, end)
         return queued
 
+    @event("HeadConfirmed")
+    def head_confirmed(self, at: dt.datetime) -> None:
+        self.queue.pop(0)
+        self.last_confirmed_at = at
+
+    # Historical: read-back era, retired 2026-07-23. No longer triggered by new
+    # code — kept so events already in the store replay onto their queued line.
     @event("HeadSent")
     def head_sent(self, at: dt.datetime) -> None:
         self.queue[0].sent_at = at
@@ -77,18 +95,15 @@ class DailyNote(Aggregate):
         head.sent_at = at
         head.resends += 1
 
-    @event("HeadConfirmed")
-    def head_confirmed(self, at: dt.datetime) -> None:
-        self.queue.pop(0)
-        self.last_confirmed_at = at
-
     @event("DuplicatesScrubbed")
     def duplicates_scrubbed(self, at: dt.datetime, removed: int) -> None:
         pass
 
     @event("LineQueued")
-    def _line_queued(self, text: str) -> None:
-        self.queue.append(QueuedLine(text))
+    def _line_queued(self, text: str, at: dt.datetime | None = None) -> None:
+        # `at` is optional so LineQueued events from before it was added still
+        # replay (they carry only `text`) — backward-compatible schema evolution.
+        self.queue.append(QueuedLine(text, first_queued_at=at))
 
     @event("TransitionNoted")
     def _transition_noted(self, kind: str, at: dt.datetime) -> None:

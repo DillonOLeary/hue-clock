@@ -22,8 +22,7 @@ PENDING_WINDOW_DAYS = 7
 @dataclass(frozen=True)
 class QueueStatus:
     pending: int
-    head_sent: bool
-    head_resends: int
+    head_queued_at: dt.datetime | None
     last_confirmed_at: dt.datetime | None
 
     @property
@@ -38,14 +37,21 @@ class CapacitiesNoteProjection(ProcessApplication):
         transcoder.register(ProvenanceAsName())
 
     def policy(self, domain_event, processing_event) -> None:
+        # queued_at is wall-clock time, stamped once here at processing time
+        # (policy does not re-run on replay), so it reflects when a line entered
+        # the outbox — not the transition's logical `at`, which can be hours old
+        # for a reconciled line and would make it look stale immediately.
+        queued_at = dt.datetime.now()
         if isinstance(domain_event, (WorkDay.ClockedIn, WorkDay.ClockedOut)):
             kind = "in" if isinstance(domain_event, WorkDay.ClockedIn) else "out"
             note = self._note(domain_event.day)
-            queued = note.record_transition(kind, domain_event.at, domain_event.provenance)
+            queued = note.record_transition(
+                kind, domain_event.at, domain_event.provenance, queued_at
+            )
         elif isinstance(domain_event, WorkDay.PeriodStruck):
             note = self._note(domain_event.day)
             queued = note.record_strike(
-                domain_event.start, domain_event.end, domain_event.provenance
+                domain_event.start, domain_event.end, domain_event.provenance, queued_at
             )
         else:
             return
@@ -73,8 +79,7 @@ class CapacitiesNoteProjection(ProcessApplication):
                 last_confirmed = confirmed
         return QueueStatus(
             pending=pending,
-            head_sent=head.is_sent if head else False,
-            head_resends=head.resends if head else 0,
+            head_queued_at=head.first_queued_at if head else None,
             last_confirmed_at=last_confirmed,
         )
 

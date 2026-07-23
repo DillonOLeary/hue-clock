@@ -54,35 +54,8 @@ class CapacitiesClient:
                 raise
         return None
 
-    def space(self) -> Json:
-        return self._request("GET", "/space")
-
-    def structures(self) -> list:
-        return self._request("GET", "/space/structures")["structures"]
-
-    def search(self, query, structure_ids=None, limit=None) -> list:
-        body = {"query": query}
-        if structure_ids:
-            body["structureIds"] = structure_ids
-        if limit:
-            body["limit"] = limit
-        return self._request("POST", "/objects/search", body)["results"]
-
-    def get_object(self, object_id) -> Json:
-        return self._request("GET", "/object", params={"id": object_id})
-
     def append_daily_note(self, markdown, date=None, no_timestamp=True) -> Json:
         body = {"markdown": markdown, "noTimeStamp": no_timestamp}
         if date:
             body["date"] = f"{date}T00:00:00.000Z"
         return self._request("POST", "/blocks/daily-note/append", body)
-
-    def create_object_from_markdown(self, structure_id, markdown) -> Json:
-        return self._request(
-            "POST", "/object/markdown", {"structureId": structure_id, "markdown": markdown}
-        )
-
-    def delete_block(self, object_id, block_id) -> Json:
-        return self._request(
-            "DELETE", "/block", params={"objectId": object_id, "blockId": block_id}
-        )

@@ -7,16 +7,13 @@ Usage:
   hue-clock-listener lights            # list lights (find the focus lamp's name)
   hue-clock-listener status            # current clock state and today's totals
   hue-clock-listener run               # headless listener (foreground)
-  hue-clock-listener dedupe [DATE]     # delete duplicated clock lines (default: today)
   hue-clock-listener import-history    # seed the event store from the legacy log
 """
 
 import datetime as dt
 import sys
 
-from hue_clock.adapters.capacities_api import CapacitiesClient
 from hue_clock.adapters.hue_bridge import HueBridge
-from hue_clock.adapters.note_publisher import CapacitiesNotePublisher
 from hue_clock.application.time_tracking import TimeTracking
 from hue_clock.formatting import format_clock, format_duration
 from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
@@ -58,19 +55,12 @@ def cmd_status() -> None:
 
     queue = CapacitiesNoteProjection(env=persistence_env()).queue_status(now.date())
     if queue.has_pending:
-        state = "sent, awaiting confirmation" if queue.head_sent else "not yet sent"
-        print(f"queued: {queue.pending} line(s); head {state}")
+        print(f"queued: {queue.pending} line(s)")
 
 
 def cmd_run() -> None:
     _lock, _runtime, listener = start_daemon()
     listener.run()
-
-
-def cmd_dedupe(date_str=None) -> None:
-    day = dt.date.fromisoformat(date_str) if date_str else dt.date.today()
-    removed = _publisher().scrub_adjacent_duplicates(day)
-    print(f"deleted {removed} duplicate clock line(s) from {day}")
 
 
 def cmd_import_history(log_path=None) -> None:
@@ -88,12 +78,6 @@ def _bridge(config=None) -> HueBridge:
     )
 
 
-def _publisher(config=None) -> CapacitiesNotePublisher:
-    config = config or load_config()
-    token = require(config.capacities_token, "CAPACITIES_API_TOKEN")
-    return CapacitiesNotePublisher(CapacitiesClient(token))
-
-
 def main() -> None:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "run"
     arg = sys.argv[2] if len(sys.argv) > 2 else None
@@ -103,8 +87,6 @@ def main() -> None:
         cmd_status()
     elif cmd == "run":
         cmd_run()
-    elif cmd == "dedupe":
-        cmd_dedupe(arg)
     elif cmd == "import-history":
         cmd_import_history(arg)
     else:

@@ -79,7 +79,7 @@ class ProjectionTest(unittest.TestCase):
         self.record((True, at(9, 12)), (False, at(12, 40)))
         status = self.notes.queue_status(DAY)
         self.assertEqual(status.pending, 2)
-        self.assertFalse(status.head_sent)
+        self.assertIsNotNone(status.head_queued_at)
         self.assertIsNone(status.last_confirmed_at)
         self.assertEqual(self.notes.days_with_pending(DAY), [DAY])
 

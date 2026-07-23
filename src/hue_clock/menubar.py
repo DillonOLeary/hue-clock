@@ -16,6 +16,10 @@ from hue_clock.formatting import format_clock, format_duration
 from hue_clock.runtime.config import LOG_FILE
 from hue_clock.runtime.daemon import start_daemon
 
+# Lines normally drain within one 60s flush pass; a head still queued past this
+# means appends are erroring, so the queue item escalates ⏳ → ⚠️.
+STALE_AFTER = dt.timedelta(minutes=2)
+
 
 class HueClockApp(rumps.App):
     def __init__(self) -> None:
@@ -136,12 +140,8 @@ class HueClockApp(rumps.App):
         queue = self.runtime.queue_status(now)
         if queue.has_pending:
             count = f"{queue.pending} line{'s' if queue.pending != 1 else ''} queued"
-            if not queue.head_sent:
-                self.last_item.title = f"⚠️ {count} — appends failing"
-            elif queue.head_resends >= 2:
-                self.last_item.title = f"⚠️ {count} — try restarting Capacities"
-            else:
-                self.last_item.title = f"⏳ {count} — awaiting confirmation"
+            stale = queue.head_queued_at is not None and now - queue.head_queued_at > STALE_AFTER
+            self.last_item.title = f"⚠️ {count} — check Capacities" if stale else f"⏳ {count}"
         elif queue.last_confirmed_at is not None:
             self.last_item.title = f"Last logged {format_clock(queue.last_confirmed_at)} ✓"
         else:

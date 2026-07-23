@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import threading
-import time
 from typing import TYPE_CHECKING
-
-from hue_clock.formatting import format_duration
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -14,17 +11,14 @@ if TYPE_CHECKING:
     from hue_clock.projections.capacities_note.ports import NotePublisher
     from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
 
-SETTLE_SECONDS = 4
-RESEND_GRACE_SECONDS = 600
-RESEND_GRACE_MAX_SECONDS = 3600
-
 
 class NoteFlusher:
-    """Drains queued note lines to Capacities, at-least-once.
+    """Drains queued note lines to Capacities, write-only and at-least-once.
 
-    Publisher calls happen outside the lock; every note mutation re-loads the
-    aggregate inside the lock and re-checks the head, so a lamp event landing
-    mid-flush can never be lost to a stale save.
+    Each line is appended, then popped on a 200 (a raised error keeps it queued
+    for the next pass). Publisher calls happen outside the lock; every note
+    mutation re-loads the aggregate inside the lock and re-checks the head, so a
+    lamp event landing mid-flush can never be lost to a stale save.
     """
 
     def __init__(
@@ -32,13 +26,11 @@ class NoteFlusher:
         notes: CapacitiesNoteProjection,
         publisher: NotePublisher,
         now: Callable[[], dt.datetime] = dt.datetime.now,
-        settle: Callable[[float], None] = time.sleep,
         lock: threading.Lock | None = None,
     ) -> None:
         self.notes = notes
         self.publisher = publisher
         self.now = now
-        self.settle = settle
         self.lock = lock or threading.Lock()
 
     def flush(self) -> None:
@@ -54,46 +46,25 @@ class NoteFlusher:
                 )
 
     def _flush_day(self, day: dt.date) -> None:
-        while self._settle_head(day):
+        while self._publish_head(day):
             pass
 
-    def _settle_head(self, day: dt.date) -> bool:
+    def _publish_head(self, day: dt.date) -> bool:
         with self.lock:
             note = self.notes.note(day)
             head = note.head if note else None
             if head is None:
                 return False
-            text, sent_at, resends = head.text, head.sent_at, head.resends
+            text, already_sent = head.text, head.is_sent
 
-        now = self.now()
-        if sent_at is None:
+        # Migration guard: a line with sent_at set already got a 200 in the
+        # read-back era (this drains the lines wedged by the retired confirm
+        # loop). Pop without re-appending so we don't add another duplicate.
+        # Inert afterward — sent_at is never set on new lines.
+        if not already_sent:
             self.publisher.append(text, day)
-            self._apply(day, text, lambda n: n.head_sent(now))
-            sent_at = now
-            self.settle(SETTLE_SECONDS)
-        if self.publisher.line_present(text, day):
-            return self._confirm(day, text, was_resent=resends > 0)
-
-        age = (now - sent_at).total_seconds()
-        grace = min(RESEND_GRACE_SECONDS * 2**resends, RESEND_GRACE_MAX_SECONDS)
-        if age < grace:
-            print(f"unconfirmed (read-back lag?) — will re-check: {text}", flush=True)
-            return False
-
-        self.publisher.append(text, day)
-        self._apply(day, text, lambda n: n.head_resent(self.now()))
-        print(f"absent {format_duration(age)} after send — re-sent: {text}", flush=True)
-        self.settle(SETTLE_SECONDS)
-        if self.publisher.line_present(text, day):
-            return self._confirm(day, text, was_resent=True)
-        return False
-
-    def _confirm(self, day: dt.date, text: str, was_resent: bool) -> bool:
-        confirmed = self._apply(day, text, lambda n: n.head_confirmed(self.now()))
-        if confirmed is None:
-            return False
-        if was_resent:
-            self._scrub(day)
+            print(f"[{self.now().isoformat(timespec='seconds')}] published: {text}", flush=True)
+        self._apply(day, text, lambda n: n.head_confirmed(self.now()))
         return True
 
     def _apply(
@@ -107,16 +78,3 @@ class NoteFlusher:
             mutate(note)
             self.notes.save(note)
             return note
-
-    def _scrub(self, day: dt.date) -> None:
-        try:
-            removed = self.publisher.scrub_adjacent_duplicates(day)
-        except Exception as error:
-            print(f"duplicate scrub failed (`dedupe` runs it by hand): {error}", flush=True)
-            return
-        if removed:
-            with self.lock:
-                note = self.notes.note(day)
-                note.duplicates_scrubbed(self.now(), removed)
-                self.notes.save(note)
-            print(f"deleted {removed} duplicate line(s) from {day}", flush=True)

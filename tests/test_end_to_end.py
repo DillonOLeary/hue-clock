@@ -44,12 +44,6 @@ class RecordingPublisher:
     def append(self, line, day):
         self.published.append(line)
 
-    def line_present(self, line, day):
-        return line in self.published
-
-    def scrub_adjacent_duplicates(self, day):
-        return 0
-
 
 def lamp_event(on):
     return [{"data": [{"id": LIGHT_ID, "on": {"on": on}}]}]
@@ -69,9 +63,7 @@ class EndToEndTest(unittest.TestCase):
         runtime = TrackerRuntime.start(env=self.env)
         bridge = ScriptedBridge(initially_on=True, batches=[lamp_event(False)])
         publisher = RecordingPublisher()
-        flusher = NoteFlusher(
-            runtime.notes, publisher, settle=lambda seconds: None, lock=runtime.commands
-        )
+        flusher = NoteFlusher(runtime.notes, publisher, lock=runtime.commands)
 
         with contextlib.redirect_stdout(io.StringIO()):
             HueListener(runtime, bridge, "Focus Lamp").run()
