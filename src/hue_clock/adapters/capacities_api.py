@@ -6,15 +6,37 @@ to a single space, and need api:read / api:write scopes.
 """
 
 import json
-import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlencode
 
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_incrementing
+
 BASE_URL = "https://api.capacities.io"
-API_VERSION = "0.1.0"
+API_VERSION = "1.0.0"
+RETRYABLE_HTTP_CODES = frozenset({429, 500, 502, 503, 504})
 
 Json = dict | list | None
+
+
+def _is_transient(error: BaseException) -> bool:
+    # HTTPError subclasses URLError, so check it first: a non-retryable status
+    # must not fall through to the connection-error branch.
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in RETRYABLE_HTTP_CODES
+    return isinstance(error, urllib.error.URLError)
+
+
+@retry(
+    retry=retry_if_exception(_is_transient),
+    stop=stop_after_attempt(3),
+    wait=wait_incrementing(start=3, increment=3),
+    reraise=True,
+)
+def _send(req) -> Json:
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        raw = resp.read()
+    return json.loads(raw) if raw else None
 
 
 class CapacitiesClient:
@@ -36,23 +58,12 @@ class CapacitiesClient:
                 "Content-Type": "application/json",
             },
         )
-        for attempt in range(3):
-            try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    raw = resp.read()
-                return json.loads(raw) if raw else None
-            except urllib.error.HTTPError as e:
-                if e.code in (429, 500, 502, 503, 504) and attempt < 2:
-                    time.sleep(3 * (attempt + 1))
-                    continue
-                detail = e.read().decode(errors="replace")[:500]
-                raise RuntimeError(f"{method} {path} -> HTTP {e.code}: {detail}") from e
-            except urllib.error.URLError:
-                if attempt < 2:
-                    time.sleep(3)
-                    continue
-                raise
-        return None
+        try:
+            result = _send(req)
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")[:500]
+            raise RuntimeError(f"{method} {path} -> HTTP {e.code}: {detail}") from e
+        return result
 
     def append_daily_note(self, markdown, date=None, no_timestamp=True) -> Json:
         body = {"markdown": markdown, "noTimeStamp": no_timestamp}
