@@ -22,6 +22,10 @@ build-backend = "uv_build"
 dev = [
     "ruff>=0.15.22",
 ]
+build = [
+    "pillow>=10",
+    "py2app>=0.28.10",
+]
 
 [tool.ruff]
 line-length = 100
@@ -36,6 +40,8 @@ ignore = [
     "D203", "D213",  # resolve the two D-rule conflicts (keep D211, D212)
     # unittest, not pytest — the flake8-pytest-style rules do not apply.
     "PT",
+    # Personal project; per-file copyright headers are noise.
+    "CPY",
     # Clock in/out is wall-clock local time; naive datetimes are the model.
     "DTZ",
     # Emoji, ·, −, – in note lines are load-bearing (parity with Capacities).

@@ -22,7 +22,7 @@ uv sync                                  # creates .venv, installs deps
 cp .env.example .env && chmod 600 .env   # fill in the values (see Setup below)
 uv run hue-clock-listener lights         # find your focus lamp's exact name
 uv run hue-clock                         # launch the menu bar app
-uv run scripts/make_app.py               # optional: build the dockable Hue Clock.app
+# optional: build the dockable Hue Clock.app — see "Dock app" below
 ```
 
 ## Menu bar app
@@ -105,19 +105,28 @@ uv run hue-clock-listener import-history   # one-off: seed the event store from 
 Nothing auto-starts — you decide when tracking runs. Build the app bundle:
 
 ```sh
-uv run scripts/make_app.py
+uv run --python /opt/homebrew/opt/python@3.13/bin/python3.13 --group build scripts/make_app.py
+mkdir -p ~/.config/hue_clock && ln -sf "$PWD/.env" ~/.config/hue_clock/.env
 ```
 
-This renders the icon (Pillow runs in an ephemeral env via uv's inline
-script dependencies — no change to the project venv) and assembles
-`~/Applications/Hue Clock.app`, a thin launcher that cd's to this repo and
-execs `.venv/bin/hue-clock`. Drag it to the Dock once; from then on click it
-to start tracking, and quit from the menu bar (or right-click the Dock
-icon → Quit). While running it shows in the Dock; the single-instance lock
-makes an accidental double-launch harmless.
+py2app requires a *framework* build of Python (uv's managed interpreters are
+not one; the script checks and says so). Homebrew's is a native arm64
+framework build; python.org's universal2 build also works but py2app's stub
+picked its Intel slice under Rosetta here, so prefer Homebrew.
 
-The bundle hardcodes this repo's absolute path — after moving or renaming
-the repo, rerun `uv sync` and then `uv run scripts/make_app.py`.
+This renders the icon and has py2app assemble `~/Applications/Hue Clock.app`
+as a real, standalone bundle: interpreter and dependencies embedded, and the
+bundle's executable *is* the Python process. (The previous thin launcher
+exec'd the venv binary — macOS 26 never renders a menu bar icon for
+processes that exec away from their bundle identity, FB21015611.) Drag it to
+the Dock once; click it to start tracking, quit from the menu bar (or
+right-click the Dock icon → Quit). While running it shows in the Dock; the
+single-instance lock makes an accidental double-launch harmless.
+
+The bundle snapshots code and dependencies — rerun the build after changing
+either. Config is read from `~/.config/hue_clock/.env` (the symlink above),
+falling back to an upward `.env` walk from the working directory, which is
+what CLI runs from inside the repo hit.
 
 ## Tests
 

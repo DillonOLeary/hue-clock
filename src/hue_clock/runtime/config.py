@@ -7,6 +7,7 @@ TIME_TRACKING_DB = STATE_DIR / "time_tracking.db"
 CAPACITIES_NOTE_DB = STATE_DIR / "capacities_note.db"
 LOCK_FILE = Path.home() / ".local" / "state" / "hue_clock.lock"
 LOG_FILE = Path.home() / "Library" / "Logs" / "hue-clock.log"
+ENV_FILE = Path.home() / ".config" / "hue_clock" / ".env"
 
 
 @dataclass(frozen=True)
@@ -36,12 +37,12 @@ def require(value: str | None, name: str) -> str:
 def _load_env_file() -> None:
     """Load .env into the environment without overriding existing variables.
 
-    Already-set environment variables always win. The launcher app runs with
-    the project root as its working directory, so the walk finds .env
-    immediately.
+    Already-set environment variables always win. ~/.config/hue_clock/.env is
+    the canonical location — the app bundle has no meaningful working
+    directory — with an upward walk from cwd so `uv run` inside the repo
+    keeps working.
     """
-    for directory in (Path.cwd(), *Path.cwd().parents):
-        env_path = directory / ".env"
+    for env_path in (ENV_FILE, *(d / ".env" for d in (Path.cwd(), *Path.cwd().parents))):
         if env_path.exists():
             for line in env_path.read_text().splitlines():
                 line = line.strip()

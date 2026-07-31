@@ -1,30 +1,28 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["pillow>=10"]
-# ///
 """Build the dockable "Hue Clock.app" bundle in ~/Applications.
 
-Run with `uv run scripts/make_app.py` — uv reads the inline dependencies
-above and runs this in an ephemeral env with Pillow, leaving the project
-venv untouched.
+Run with `uv run --group build scripts/make_app.py`. py2app produces a real
+bundle whose executable *is* the Python process — no launcher that execs away
+from the bundle identity, which macOS 26 punishes by never rendering the menu
+bar icon (FB21015611). The bundle is standalone (interpreter and deps
+embedded): rerun this script after changing code or dependencies, and point it
+at the config once with `ln -sf "$PWD/.env" ~/.config/hue_clock/.env`.
 
-The bundle is a thin launcher: it cd's to this repo (so .env discovery
-works) and execs .venv/bin/hue-clock. Paths inside the bundle are absolute —
-rerun this script after moving the repo. The icon (a pendant lamp casting a
-green "clocked in" glow on deep focus blue) is rendered from code here; no
-image assets are checked in.
+The icon (a pendant lamp casting a green "clocked in" glow on deep focus
+blue) is rendered from code here; no image assets are checked in.
 """
 
-import plistlib
+import contextlib
 import shutil
 import subprocess
+import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw
+from setuptools import setup
 
-REPO = Path(__file__).resolve().parent.parent
 APP = Path.home() / "Applications" / "Hue Clock.app"
 SS = 2  # supersample factor for crisp edges after downscale
 
@@ -135,41 +133,65 @@ def build_icns(master: Image.Image, icns_path: Path) -> None:
         subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icns_path)], check=True)
 
 
+PLIST = {
+    "CFBundleDisplayName": "Hue Clock",
+    "CFBundleIdentifier": "com.dillonoleary.hue-clock",
+    "CFBundleName": "Hue Clock",
+    "CFBundleShortVersionString": "0.1.0",
+    "CFBundleVersion": "0.1.0",
+    "LSMinimumSystemVersion": "12.0",
+    # Regular app on purpose: the Dock icon shows while running, so
+    # start/stop is visible and right-click → Quit works.
+    "LSUIElement": False,
+    "NSHighResolutionCapable": True,
+    "NSLocalNetworkUsageDescription": (
+        "Hue Clock watches the Philips Hue bridge on your local network "
+        "to record clock in/out transitions."
+    ),
+}
+
+
 def build_app() -> None:
+    if not sysconfig.get_config_var("PYTHONFRAMEWORK"):
+        raise SystemExit(
+            "py2app needs a framework build of Python; uv's managed interpreters are not.\n"
+            "Use e.g.:  uv run --python /opt/homebrew/opt/python@3.13/bin/python3.13"
+            " --group build scripts/make_app.py"
+        )
     if APP.exists():
         shutil.rmtree(APP)
-    macos = APP / "Contents" / "MacOS"
-    resources = APP / "Contents" / "Resources"
-    macos.mkdir(parents=True)
-    resources.mkdir(parents=True)
-
-    build_icns(render_icon(), resources / "AppIcon.icns")
-
-    with open(APP / "Contents" / "Info.plist", "wb") as f:
-        plistlib.dump(
-            {
-                "CFBundleDevelopmentRegion": "en",
-                "CFBundleDisplayName": "Hue Clock",
-                "CFBundleExecutable": "hue-clock",
-                "CFBundleIconFile": "AppIcon",
-                "CFBundleIdentifier": "com.dillonoleary.hue-clock",
-                "CFBundleInfoDictionaryVersion": "6.0",
-                "CFBundleName": "Hue Clock",
-                "CFBundlePackageType": "APPL",
-                "CFBundleShortVersionString": "0.1.0",
-                "CFBundleVersion": "0.1.0",
-                "LSMinimumSystemVersion": "12.0",
-                # Regular app on purpose: the Dock icon shows while running, so
-                # start/stop is visible and right-click → Quit works.
-                "LSUIElement": False,
-                "NSHighResolutionCapable": True,
-            },
-            f,
-        )
-
-    launcher = macos / "hue-clock"
-    launcher.write_text(f'#!/bin/sh\ncd "{REPO}" || exit 1\nexec "{REPO}/.venv/bin/hue-clock"\n')
-    launcher.chmod(0o755)
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
+        build_icns(render_icon(), work / "AppIcon.icns")
+        # Generated entry script: keeps hue_clock.menubar a normal package
+        # module inside the bundle instead of doubling as __main__.
+        entry = work / "hue_clock_app.py"
+        entry.write_text("from hue_clock.menubar import main\n\nmain()\n")
+        sys.argv[1:] = ["py2app"]
+        # setup() runs from inside the work dir: setuptools must not discover
+        # the repo's pyproject.toml (whose uv_build metadata it can't digest),
+        # and build/dist artifacts stay out of the repo.
+        with contextlib.chdir(work):
+            setup(
+                name="Hue Clock",
+                app=[str(entry)],
+                options={
+                    "py2app": {
+                        "iconfile": str(work / "AppIcon.icns"),
+                        # eventsourcing resolves persistence modules from topic
+                        # strings at runtime — whole-package copies keep those
+                        # dynamic imports out of py2app's static-analysis blind
+                        # spot.
+                        "packages": ["hue_clock", "eventsourcing"],
+                        "plist": PLIST,
+                    },
+                },
+            )
+        shutil.move(str(next((work / "dist").glob("*.app"))), APP)
+    # Ad-hoc sign the whole bundle: Apple silicon refuses unsigned arm64 code,
+    # and py2app's own signing misses nested pieces — the app silently runs
+    # under Rosetta (or not at all) without this.
+    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(APP)], check=True)
     print(f"built {APP}")
     print("drag it to the Dock; click to start, quit from the menu bar or Dock")
 
