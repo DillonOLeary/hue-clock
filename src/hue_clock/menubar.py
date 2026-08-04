@@ -149,7 +149,9 @@ class HueClockApp(rumps.App):
 
 
 def main() -> None:
-    log = open(LOG_FILE, "a", buffering=1)  # noqa: SIM115 — redirect target for the process lifetime
+    # Explicit utf-8: a Finder-launched bundle has no locale, and the ascii
+    # fallback makes every 🟢/🔴 print raise mid-pipeline.
+    log = open(LOG_FILE, "a", buffering=1, encoding="utf-8")  # noqa: SIM115 — redirect target for the process lifetime
     sys.stdout = sys.stderr = log
     print(f"--- Hue Clock menu bar app started {dt.datetime.now().isoformat()}", flush=True)
     app = HueClockApp()

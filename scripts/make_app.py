@@ -140,6 +140,9 @@ PLIST = {
     "CFBundleShortVersionString": "0.1.0",
     "CFBundleVersion": "0.1.0",
     "LSMinimumSystemVersion": "12.0",
+    # Finder launches carry no locale, so the bundled Python's default
+    # encodings fall back to ascii; force UTF-8 everywhere.
+    "LSEnvironment": {"PYTHONUTF8": "1"},
     # Regular app on purpose: the Dock icon shows while running, so
     # start/stop is visible and right-click → Quit works.
     "LSUIElement": False,
