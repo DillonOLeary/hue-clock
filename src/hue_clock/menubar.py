@@ -137,7 +137,6 @@ class HueClockApp(rumps.App):
         self._refresh_queue_item(now, self.runtime)
 
     def _clock_out_on_quit(self) -> None:
-        # before_quit: what shutdown means is the daemon's business, not ours.
         if self.daemon is not None:
             self.daemon.shutdown()
 
