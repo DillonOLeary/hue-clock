@@ -18,6 +18,10 @@ if TYPE_CHECKING:
 
 PENDING_WINDOW_DAYS = 7
 
+# Lines normally drain within one 60s flush pass; a head still queued past
+# this means appends are erroring and the queue deserves attention.
+STALE_AFTER = dt.timedelta(minutes=2)
+
 
 @dataclass(frozen=True)
 class QueueStatus:
@@ -28,6 +32,9 @@ class QueueStatus:
     @property
     def has_pending(self) -> bool:
         return self.pending > 0
+
+    def is_stale(self, now: dt.datetime) -> bool:
+        return self.head_queued_at is not None and now - self.head_queued_at > STALE_AFTER
 
 
 class CapacitiesNoteProjection(ProcessApplication):

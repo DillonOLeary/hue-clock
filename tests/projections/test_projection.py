@@ -7,7 +7,10 @@ from eventsourcing.system import SingleThreadedRunner, System
 
 from hue_clock.application.time_tracking import TimeTracking
 from hue_clock.domain.work_day import Provenance
-from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
+from hue_clock.projections.capacities_note.projection import (
+    CapacitiesNoteProjection,
+    QueueStatus,
+)
 
 DAY = dt.date(2026, 7, 21)
 
@@ -82,6 +85,13 @@ class ProjectionTest(unittest.TestCase):
         self.assertIsNotNone(status.head_queued_at)
         self.assertIsNone(status.last_confirmed_at)
         self.assertEqual(self.notes.days_with_pending(DAY), [DAY])
+
+    def test_queue_staleness_is_the_projections_call(self):
+        queued = QueueStatus(pending=1, head_queued_at=at(9), last_confirmed_at=None)
+        self.assertFalse(queued.is_stale(at(9, 1)))  # one flush pass hasn't elapsed
+        self.assertTrue(queued.is_stale(at(9, 3)))
+        empty = QueueStatus(pending=0, head_queued_at=None, last_confirmed_at=at(9))
+        self.assertFalse(empty.is_stale(at(9, 3)))
 
     def test_queued_lines_are_printed_for_the_log(self):
         buffer = io.StringIO()
