@@ -66,7 +66,7 @@ def import_history(log_path: str | None = None, runtime: TrackerRuntime | None =
                 start, end = transition.strike_span
                 runtime.tracking.strike_span(start, end, transition.at, Provenance.IMPORTED)
             else:
-                runtime.tracking.record_lamp_state(
+                runtime.tracking.record_clock_state(
                     transition.mark == "🟢", transition.at, Provenance.IMPORTED
                 )
             imported += 1

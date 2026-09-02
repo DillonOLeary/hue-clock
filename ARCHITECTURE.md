@@ -40,7 +40,7 @@ its own SQLite database (`~/.local/state/hue_clock/*.db`).
 | Aggregate + invariants | `domain/work_day.py` | `WorkDay` guards *no double clock-in*, *no out-of-order transitions*, *strikes inside the day* |
 | Guard vs. apply split | `domain/work_day.py` | public commands (`clock_in`) validate and raise; `@event`-decorated privates (`_clocked_in`) only mutate. Guards must stay out of apply methods — apply re-runs on every replay |
 | Deterministic identity | `WorkDay.create_id` | one aggregate per calendar day via `uuid5(date)`; streams stay tiny, no snapshots needed |
-| Application service | `application/time_tracking.py` | `TimeTracking` — command handlers (`record_lamp_state`, `strike_span`), the midnight-rollover cascade saved atomically with `save(*aggregates)`, and read-side queries |
+| Application service | `application/time_tracking.py` | `TimeTracking` — command handlers (`record_clock_state`, `strike_span`), the midnight-rollover cascade saved atomically with `save(*aggregates)`, and read-side queries |
 | Process manager, exactly-once | `projections/capacities_note/projection.py` | `policy()` materializes `DailyNote` events atomically with a tracking record — a crash between contexts can never double-process |
 | Event-sourced projection state | `projections/capacities_note/daily_note.py` | the projection's own state (rendered lines, outbox queue) is itself an event stream |
 | Outbox pattern | `daily_note.py` + `flusher.py` | queue a line atomically with the fact that caused it; publish later, at-least-once, behind an idempotent boundary |
@@ -154,7 +154,7 @@ main thread — rumps menu bar
 
 listener thread — runtime/hue_listener.py
   SSE loop: reconcile on (re)connect, then each lamp event →
-  record_lamp_state() → [policy runs synchronously, same thread]
+  record_clock_state() → [policy runs synchronously, same thread]
   → wake flusher
 
 flusher thread — runtime/note_flusher_loop.py

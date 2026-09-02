@@ -41,7 +41,7 @@ class Daemon:
         """
         now = dt.datetime.now()
         try:
-            if self.runtime.record_lamp_state(False, now, Provenance.QUIT):
+            if self.runtime.record_clock_state(False, now, Provenance.QUIT):
                 print(f"shutdown: clocked out at {now.isoformat(timespec='seconds')}", flush=True)
         except Exception as e:
             print(f"shutdown: clock-out failed: {e}", flush=True)

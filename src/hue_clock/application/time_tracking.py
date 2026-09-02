@@ -49,9 +49,9 @@ class TimeTracking(Application):
         transcoder.register(DateAsISO())
         transcoder.register(ProvenanceAsName())
 
-    def record_lamp_state(
+    def record_clock_state(
         self,
-        on: bool,
+        clocked_in: bool,
         at: dt.datetime,
         provenance: Provenance = Provenance.OBSERVED,
     ) -> bool:
@@ -59,7 +59,7 @@ class TimeTracking(Application):
         current = changed[-1] if changed else self._latest_work_day(at.date())
 
         was_clocked_in = current.is_clocked_in if current else False
-        if was_clocked_in == on:
+        if was_clocked_in == clocked_in:
             self._save_all(changed)
             return False
 
@@ -68,7 +68,7 @@ class TimeTracking(Application):
             changed.append(current)
         elif not changed:
             changed.append(current)
-        if on:
+        if clocked_in:
             current.clock_in(at, provenance)
         else:
             current.clock_out(at, provenance)

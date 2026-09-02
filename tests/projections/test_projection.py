@@ -28,7 +28,7 @@ class ProjectionTest(unittest.TestCase):
     def record(self, *transitions):
         with contextlib.redirect_stdout(io.StringIO()):
             for on, when in transitions:
-                self.tracking.record_lamp_state(on, when)
+                self.tracking.record_clock_state(on, when)
 
     def test_transitions_become_queued_note_lines(self):
         self.record((True, at(9, 12)), (False, at(12, 40)))
@@ -62,8 +62,8 @@ class ProjectionTest(unittest.TestCase):
 
     def test_imported_history_is_archived_not_queued(self):
         with contextlib.redirect_stdout(io.StringIO()):
-            self.tracking.record_lamp_state(True, at(9), Provenance.IMPORTED)
-            self.tracking.record_lamp_state(False, at(10), Provenance.IMPORTED)
+            self.tracking.record_clock_state(True, at(9), Provenance.IMPORTED)
+            self.tracking.record_clock_state(False, at(10), Provenance.IMPORTED)
         note = self.notes.note(DAY)
         self.assertEqual(note.queue, [])
         self.assertEqual(len(note.ledger.closed_sessions), 1)
@@ -86,7 +86,7 @@ class ProjectionTest(unittest.TestCase):
     def test_queued_lines_are_printed_for_the_log(self):
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
-            self.tracking.record_lamp_state(True, at(9, 12))
+            self.tracking.record_clock_state(True, at(9, 12))
         self.assertEqual(buffer.getvalue(), "[2026-07-21T09:12:00] 🟢 9:12a\n")
 
 

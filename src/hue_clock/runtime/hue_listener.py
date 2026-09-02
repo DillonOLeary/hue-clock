@@ -36,7 +36,7 @@ class HueListener:
             for item in event.get("data", []):
                 if item.get("id") != self.light_id or "on" not in item:
                     continue
-                self.runtime.record_lamp_state(item["on"]["on"], dt.datetime.now())
+                self.runtime.record_clock_state(item["on"]["on"], dt.datetime.now())
 
     def _reconcile(self) -> None:
         """Record any change missed while disconnected.
@@ -50,4 +50,4 @@ class HueListener:
         status = self.runtime.clock_status(now)
         known_on = status.is_clocked_in if status else False
         if known_on != live_on:
-            self.runtime.record_lamp_state(live_on, now, Provenance.RECONCILED)
+            self.runtime.record_clock_state(live_on, now, Provenance.RECONCILED)

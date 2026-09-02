@@ -53,11 +53,11 @@ class TrackerRuntime:
     def stop(self) -> None:
         self.runner.stop()
 
-    def record_lamp_state(
-        self, on: bool, at: dt.datetime, provenance: Provenance = Provenance.OBSERVED
+    def record_clock_state(
+        self, clocked_in: bool, at: dt.datetime, provenance: Provenance = Provenance.OBSERVED
     ) -> bool:
         with self.commands:
-            recorded = self.tracking.record_lamp_state(on, at, provenance)
+            recorded = self.tracking.record_clock_state(clocked_in, at, provenance)
         if recorded:
             self.flusher_wake.set()
         return recorded

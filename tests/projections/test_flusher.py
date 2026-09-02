@@ -53,7 +53,7 @@ class FlusherTest(unittest.TestCase):
     def record(self, *transitions):
         with contextlib.redirect_stdout(io.StringIO()):
             for on, when in transitions:
-                self.tracking.record_lamp_state(on, when)
+                self.tracking.record_clock_state(on, when)
 
     def flush(self):
         with contextlib.redirect_stdout(io.StringIO()):
