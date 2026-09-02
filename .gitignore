@@ -6,3 +6,4 @@ __pycache__/
 .claude/settings.local.json
 tach_module_graph.dot
 .coverage
+htmlcov/
