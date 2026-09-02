@@ -1,5 +1,6 @@
 import datetime as dt
 import time
+from collections.abc import Callable
 
 from hue_clock.adapters.hue_bridge import HueBridge
 from hue_clock.domain.work_day import Provenance
@@ -8,10 +9,21 @@ from hue_clock.runtime.composition import TrackerRuntime
 RECONNECT_DELAY_S = 5
 
 
+def _noop() -> None:
+    pass
+
+
 class HueListener:
-    def __init__(self, runtime: TrackerRuntime, bridge: HueBridge, light_name: str) -> None:
+    def __init__(
+        self,
+        runtime: TrackerRuntime,
+        bridge: HueBridge,
+        light_name: str,
+        on_reconnect: Callable[[], None] = _noop,
+    ) -> None:
         self.runtime = runtime
         self.bridge = bridge
+        self.on_reconnect = on_reconnect
         self.light_id = bridge.find_light(light_name)["id"]
         print(f"watching light {light_name!r} ({self.light_id}) on bridge {bridge.ip}", flush=True)
 
@@ -20,7 +32,9 @@ class HueListener:
             try:
                 stream = self.bridge.open_event_stream()
                 self._reconcile()
-                self.runtime.flusher_wake.set()
+                # The network is evidently back — anything queued while it was
+                # down deserves a pass now, recorded change or not.
+                self.on_reconnect()
                 for events in self.bridge.iter_events(stream):
                     self._dispatch(events)
             except KeyboardInterrupt:

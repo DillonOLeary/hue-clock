@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import datetime as dt
 import threading
+from typing import TYPE_CHECKING
 
 from eventsourcing.system import SingleThreadedRunner, System
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from hue_clock.application.time_tracking import (
     ClockStatus,
@@ -33,7 +37,8 @@ class TrackerRuntime:
     """Composition root for the running app.
 
     Owns the leader→follower system, serializes all writes behind one lock,
-    and wakes the flusher after every recorded change.
+    and notifies on_recorded subscribers after every recorded change — it
+    does not know who listens (the flusher loop subscribes at wiring time).
     """
 
     def __init__(self, runner: SingleThreadedRunner) -> None:
@@ -41,7 +46,15 @@ class TrackerRuntime:
         self.tracking: TimeTracking = runner.get(TimeTracking)
         self.notes: CapacitiesNoteProjection = runner.get(CapacitiesNoteProjection)
         self.commands = threading.Lock()
-        self.flusher_wake = threading.Event()
+        self._recorded_callbacks: list[Callable[[], None]] = []
+
+    def on_recorded(self, callback: Callable[[], None]) -> None:
+        """Call back after every recorded change, from whichever thread wrote."""
+        self._recorded_callbacks.append(callback)
+
+    def _notify_recorded(self) -> None:
+        for callback in self._recorded_callbacks:
+            callback()
 
     @classmethod
     def start(cls, env: dict[str, str] | None = None) -> TrackerRuntime:
@@ -59,19 +72,19 @@ class TrackerRuntime:
         with self.commands:
             recorded = self.tracking.record_clock_state(clocked_in, at, provenance)
         if recorded:
-            self.flusher_wake.set()
+            self._notify_recorded()
         return recorded
 
     def strike_window(self, minutes: int) -> None:
         now = dt.datetime.now()
         with self.commands:
             self.tracking.strike_span(now - dt.timedelta(minutes=minutes), now, now)
-        self.flusher_wake.set()
+        self._notify_recorded()
 
     def strike_session(self, index: int) -> None:
         with self.commands:
             self.tracking.strike_session(index, dt.datetime.now())
-        self.flusher_wake.set()
+        self._notify_recorded()
 
     def advance_to(self, now: dt.datetime) -> None:
         with self.commands:

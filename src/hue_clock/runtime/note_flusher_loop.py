@@ -6,14 +6,19 @@ FLUSH_INTERVAL_SECONDS = 60
 
 
 class FlusherLoop:
-    def __init__(self, flusher: NoteFlusher, wake: threading.Event) -> None:
+    """Runs a flush pass every 60s, or immediately when woken via wake()."""
+
+    def __init__(self, flusher: NoteFlusher) -> None:
         self.flusher = flusher
-        self.wake = wake
+        self._wake = threading.Event()
+
+    def wake(self) -> None:
+        self._wake.set()
 
     def run(self) -> None:
         while True:
-            self.wake.wait(timeout=FLUSH_INTERVAL_SECONDS)
-            self.wake.clear()
+            self._wake.wait(timeout=FLUSH_INTERVAL_SECONDS)
+            self._wake.clear()
             self.flusher.flush()
 
     def start_thread(self) -> threading.Thread:

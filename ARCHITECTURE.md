@@ -155,7 +155,8 @@ main thread — rumps menu bar
 listener thread — runtime/hue_listener.py
   SSE loop: reconcile on (re)connect, then each lamp event →
   record_clock_state() → [policy runs synchronously, same thread]
-  → wake flusher
+  → on_recorded subscribers notified (the flusher loop's wake, wired
+  at composition — the core never names the flusher)
 
 flusher thread — runtime/note_flusher_loop.py
   wakes on event or 60s: NoteFlusher.flush() — all network I/O lives here,
