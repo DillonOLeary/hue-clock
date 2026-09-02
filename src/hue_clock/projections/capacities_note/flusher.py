@@ -39,9 +39,9 @@ class NoteFlusher:
                 self._flush_day(day)
             except Exception as error:
                 note = self.notes.note(day)
+                pending = len(note.queue) if note else 0
                 print(
-                    f"capacities write failed — {len(note.queue)} line(s) "
-                    f"queued for {day}: {error}",
+                    f"capacities write failed — {pending} line(s) queued for {day}: {error}",
                     flush=True,
                 )
 
@@ -72,8 +72,7 @@ class NoteFlusher:
     ) -> DailyNote | None:
         with self.lock:
             note = self.notes.note(day)
-            head = note.head if note else None
-            if head is None or head.text != expected_head:
+            if note is None or note.head is None or note.head.text != expected_head:
                 return None
             mutate(note)
             self.notes.save(note)

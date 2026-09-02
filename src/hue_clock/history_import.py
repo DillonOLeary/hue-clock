@@ -62,7 +62,7 @@ def import_history(log_path: str | None = None, runtime: TrackerRuntime | None =
         for transition in transitions:
             if transition.at.date() in skipped:
                 continue
-            if transition.mark == "⚫":
+            if transition.strike_span is not None:
                 start, end = transition.strike_span
                 runtime.tracking.strike_span(start, end, transition.at, Provenance.IMPORTED)
             else:

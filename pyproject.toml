@@ -22,11 +22,21 @@ dev = [
     "pre-commit>=4.6.2",
     "ruff>=0.15.22",
     "tach>=0.35.0",
+    "ty>=0.0.77",
 ]
 build = [
     "pillow>=10",
     "py2app>=0.28.10",
 ]
+
+[tool.ty.src]
+exclude = ["tests", "scripts"]  # unittest fails loudly on the Optionals ty would flag
+
+# WorkDay.ClockedIn / .ClockedOut / .PeriodStruck are minted at runtime by the
+# eventsourcing @event decorator; no static checker can see them.
+[[tool.ty.overrides]]
+include = ["src/hue_clock/projections/capacities_note/projection.py"]
+rules = { unresolved-attribute = "ignore" }
 
 [tool.ruff]
 line-length = 100

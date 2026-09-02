@@ -12,10 +12,12 @@ import sys
 import threading
 
 import rumps
+import rumps.events
 
 from hue_clock.formatting import format_clock, format_duration
 from hue_clock.runtime.config import LOG_FILE
 from hue_clock.runtime.daemon import start_daemon
+from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
 
 class HueClockApp(rumps.App):
@@ -70,17 +72,17 @@ class HueClockApp(rumps.App):
                 minutes = int(response.text.strip())
             except ValueError:
                 return
-            if minutes > 0:
+            if minutes > 0 and self.runtime is not None:
                 self._spawn_strike(self.runtime.strike_window, minutes)
 
-    def _rebuild_strike_menu(self, now) -> None:
+    def _rebuild_strike_menu(self, now, runtime: TrackerRuntime) -> None:
         """One entry per session today; click to tombstone the whole session.
 
         Already-struck sessions show ⚫ and are disabled (no callback).
         """
         if self.strike_menu._menu is not None:  # rumps: no NSMenu until first add
             self.strike_menu.clear()
-        overviews = self.runtime.sessions(now)
+        overviews = runtime.sessions(now)
         if not overviews:
             self.strike_menu.add(rumps.MenuItem("No sessions yet"))
         for index, session in enumerate(overviews):
@@ -94,9 +96,7 @@ class HueClockApp(rumps.App):
                 self.strike_menu.add(
                     rumps.MenuItem(
                         label,
-                        callback=lambda _s, i=index: self._spawn_strike(
-                            self.runtime.strike_session, i
-                        ),
+                        callback=lambda _s, i=index: self._spawn_strike(runtime.strike_session, i),
                     )
                 )
         self.strike_menu.add(rumps.separator)
@@ -114,10 +114,10 @@ class HueClockApp(rumps.App):
         # Emoji-only title: keeps the status item ~25pt wide so it fits in the
         # sliver of menu bar left of the notch. Details live in the menu.
         status = self.runtime.clock_status(now)
-        if status is not None and status.is_clocked_in:
+        since = status.since if status is not None and status.is_clocked_in else None
+        if since is not None:
             self.title = "🟢"
-            elapsed = format_duration((now - status.since).total_seconds())
-            self.now_item.title = f"In for {elapsed}"
+            self.now_item.title = f"In for {format_duration((now - since).total_seconds())}"
         else:
             self.title = "🔴"
             self.now_item.title = "Clocked out"
@@ -133,16 +133,16 @@ class HueClockApp(rumps.App):
             self.today_item.title = title
         else:
             self.today_item.title = "No sessions today"
-        self._rebuild_strike_menu(now)
-        self._refresh_queue_item(now)
+        self._rebuild_strike_menu(now, self.runtime)
+        self._refresh_queue_item(now, self.runtime)
 
     def _clock_out_on_quit(self) -> None:
         # before_quit: what shutdown means is the daemon's business, not ours.
         if self.daemon is not None:
             self.daemon.shutdown()
 
-    def _refresh_queue_item(self, now) -> None:
-        queue = self.runtime.queue_status(now)
+    def _refresh_queue_item(self, now, runtime: TrackerRuntime) -> None:
+        queue = runtime.queue_status(now)
         if queue.has_pending:
             count = f"{queue.pending} line{'s' if queue.pending != 1 else ''} queued"
             stale = queue.is_stale(now)

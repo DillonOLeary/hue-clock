@@ -32,11 +32,12 @@ def cmd_status() -> None:
     now = dt.datetime.now()
     tracking = TimeTracking(env=persistence_env())
     status = tracking.clock_status(now)
+    since = status.since if status is not None and status.is_clocked_in else None
     if status is None:
         print("no history yet")
-    elif status.is_clocked_in:
-        elapsed = format_duration((now - status.since).total_seconds())
-        print(f"🟢 clocked in since {format_clock(status.since)} ({elapsed})")
+    elif since is not None:
+        elapsed = format_duration((now - since).total_seconds())
+        print(f"🟢 clocked in since {format_clock(since)} ({elapsed})")
     else:
         print("🔴 clocked out")
 

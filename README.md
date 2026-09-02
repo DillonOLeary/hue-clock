@@ -130,7 +130,7 @@ what CLI runs from inside the repo hit.
 
 ```sh
 uv run python -m unittest discover -s tests -t .
-uv run pre-commit install   # once per clone: ruff + tach check gate every commit
+uv run pre-commit install   # once per clone: ruff + ty + tach gate every commit
 ```
 
 Four rings, mirroring the architecture: pure domain tests (no I/O),
