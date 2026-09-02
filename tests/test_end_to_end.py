@@ -10,9 +10,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from hue_clock.projections.capacities_note.flusher import NoteFlusher
-from hue_clock.runtime.composition import TrackerRuntime
 from hue_clock.runtime.daemon import Daemon
 from hue_clock.runtime.hue_listener import HueListener
+from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
 LIGHT_ID = "light-1"
 

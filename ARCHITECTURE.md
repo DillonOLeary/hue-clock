@@ -47,7 +47,7 @@ its own SQLite database (`~/.local/state/hue_clock/*.db`).
 | Port | `projections/capacities_note/ports.py` | `NotePublisher` protocol — what the projection needs, not what Capacities offers |
 | Adapters | `adapters/` | `CapacitiesNotePublisher`, `CapacitiesClient`, `HueBridge` — all replaceable, none imported by inner layers |
 | Composition root | `runtime/daemon.py` | the only place concrete adapters meet the application; everything is wired here and nowhere else |
-| Core-system facade | `runtime/composition.py` | `TrackerRuntime` — wires the event-sourced system, owns the write lock, emits `on_recorded`; adapter-free |
+| Core-system facade | `runtime/tracker_runtime.py` | `TrackerRuntime` — wires the event-sourced system, owns the write lock, emits `on_recorded`; adapter-free |
 | Anti-corruption at the edge | `runtime/hue_listener.py` | translates Hue's SSE payloads into domain commands; the domain never sees bridge JSON |
 | Legacy migration as events | `history_import.py` | the old log replayed as first-class events with `IMPORTED` provenance |
 
@@ -91,7 +91,7 @@ The line drawn: the domain may import `eventsourcing.domain`, never
 
 ## The persistence seam
 
-`runtime/composition.py` selects storage entirely through configuration —
+`runtime/tracker_runtime.py` selects storage entirely through configuration —
 `PERSISTENCE_MODULE=eventsourcing.sqlite` plus two database paths. Swapping
 SQLite for Postgres (or a custom Turso/libSQL module) would touch that one
 function. No domain, application, or projection code knows SQLite exists.

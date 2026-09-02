@@ -17,9 +17,9 @@ from hue_clock.adapters.hue_bridge import HueBridge
 from hue_clock.application.time_tracking import TimeTracking
 from hue_clock.formatting import format_clock, format_duration
 from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
-from hue_clock.runtime.composition import persistence_env
 from hue_clock.runtime.config import load_config, require
 from hue_clock.runtime.daemon import start_daemon
+from hue_clock.runtime.tracker_runtime import persistence_env
 
 
 def cmd_lights() -> None:

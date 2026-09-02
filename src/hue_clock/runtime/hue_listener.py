@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from hue_clock.adapters.hue_bridge import HueBridge
 from hue_clock.domain.work_day import Provenance
-from hue_clock.runtime.composition import TrackerRuntime
+from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
 RECONNECT_DELAY_S = 5
 

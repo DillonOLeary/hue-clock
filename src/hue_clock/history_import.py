@@ -14,9 +14,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hue_clock.domain.work_day import Provenance
-from hue_clock.runtime.composition import TrackerRuntime
 from hue_clock.runtime.config import LOG_FILE
 from hue_clock.runtime.instance_lock import acquire_single_instance_lock
+from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
 TRANSITION = re.compile(
     r"^\[(?P<at>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\] (?P<mark>🟢|🔴|⚫) (?P<rest>.*)$"

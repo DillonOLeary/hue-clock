@@ -8,11 +8,11 @@ from hue_clock.adapters.hue_bridge import HueBridge
 from hue_clock.adapters.note_publisher import CapacitiesNotePublisher
 from hue_clock.domain.work_day import Provenance
 from hue_clock.projections.capacities_note.flusher import NoteFlusher
-from hue_clock.runtime.composition import TrackerRuntime
 from hue_clock.runtime.config import load_config, require
 from hue_clock.runtime.hue_listener import HueListener
 from hue_clock.runtime.instance_lock import acquire_single_instance_lock
 from hue_clock.runtime.note_flusher_loop import FlusherLoop
+from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
 # shutdown() blocks on one flush attempt at most this long; anything unsent
 # stays queued in SQLite and drains on next launch.

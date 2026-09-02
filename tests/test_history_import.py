@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from hue_clock.history_import import import_history, parse_log_lines
-from hue_clock.runtime.composition import TrackerRuntime
+from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
 DAY = dt.date(2026, 7, 21)
 
