@@ -34,11 +34,12 @@ def persistence_env() -> dict[str, str]:
 
 
 class TrackerRuntime:
-    """Composition root for the running app.
+    """Facade over the event-sourced core — not the composition root.
 
-    Owns the leader→follower system, serializes all writes behind one lock,
+    Wires the leader→follower system, serializes all writes behind one lock,
     and notifies on_recorded subscribers after every recorded change — it
     does not know who listens (the flusher loop subscribes at wiring time).
+    Adapters never appear here; daemon.py is where they meet this core.
     """
 
     def __init__(self, runner: SingleThreadedRunner) -> None:

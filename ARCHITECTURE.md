@@ -46,7 +46,8 @@ its own SQLite database (`~/.local/state/hue_clock/*.db`).
 | Outbox pattern | `daily_note.py` + `flusher.py` | queue a line atomically with the fact that caused it; publish later, at-least-once, behind an idempotent boundary |
 | Port | `projections/capacities_note/ports.py` | `NotePublisher` protocol — what the projection needs, not what Capacities offers |
 | Adapters | `adapters/` | `CapacitiesNotePublisher`, `CapacitiesClient`, `HueBridge` — all replaceable, none imported by inner layers |
-| Composition root | `runtime/composition.py`, `runtime/daemon.py` | the only place concrete adapters meet the application; everything is wired here and nowhere else |
+| Composition root | `runtime/daemon.py` | the only place concrete adapters meet the application; everything is wired here and nowhere else |
+| Core-system facade | `runtime/composition.py` | `TrackerRuntime` — wires the event-sourced system, owns the write lock, emits `on_recorded`; adapter-free |
 | Anti-corruption at the edge | `runtime/hue_listener.py` | translates Hue's SSE payloads into domain commands; the domain never sees bridge JSON |
 | Legacy migration as events | `history_import.py` | the old log replayed as first-class events with `IMPORTED` provenance |
 
