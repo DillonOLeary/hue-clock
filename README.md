@@ -143,6 +143,6 @@ fakes, and one end-to-end run through real SQLite with a scripted bridge.
   bearer token bound to one space
 - OpenAPI spec: https://developers.capacities.io/openapi.json
 - Rate limit: 30 req/min per endpoint
-- `src/hue_clock/adapters/capacities_api.py` is a urllib client (tenacity for
-  transient retries): daily-note append, object CRUD via markdown, search,
-  block delete
+- `src/hue_clock/adapters/capacities_api.py` is a stdlib-only, retry-free
+  client (the outbox is the retry): daily-note append, object CRUD via
+  markdown, search, block delete

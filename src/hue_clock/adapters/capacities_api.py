@@ -3,6 +3,9 @@
 Docs: https://developers.capacities.io
 Tokens are created in the Capacities app (Settings > Capacities API), are bound
 to a single space, and need api:read / api:write scopes.
+
+Deliberately retry-free: the outbox is the one retry authority — an error keeps
+the line queued and the flusher's next pass (≤60s) resends it.
 """
 
 import json
@@ -10,33 +13,10 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlencode
 
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_incrementing
-
 BASE_URL = "https://api.capacities.io"
 API_VERSION = "1.0.0"
-RETRYABLE_HTTP_CODES = frozenset({429, 500, 502, 503, 504})
 
 Json = dict | list | None
-
-
-def _is_transient(error: BaseException) -> bool:
-    # HTTPError subclasses URLError, so check it first: a non-retryable status
-    # must not fall through to the connection-error branch.
-    if isinstance(error, urllib.error.HTTPError):
-        return error.code in RETRYABLE_HTTP_CODES
-    return isinstance(error, urllib.error.URLError)
-
-
-@retry(
-    retry=retry_if_exception(_is_transient),
-    stop=stop_after_attempt(3),
-    wait=wait_incrementing(start=3, increment=3),
-    reraise=True,
-)
-def _send(req) -> Json:
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw = resp.read()
-    return json.loads(raw) if raw else None
 
 
 class CapacitiesClient:
@@ -59,11 +39,12 @@ class CapacitiesClient:
             },
         )
         try:
-            result = _send(req)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read()
         except urllib.error.HTTPError as e:
             detail = e.read().decode(errors="replace")[:500]
             raise RuntimeError(f"{method} {path} -> HTTP {e.code}: {detail}") from e
-        return result
+        return json.loads(raw) if raw else None
 
     def append_daily_note(self, markdown, date=None, no_timestamp=True) -> Json:
         body = {"markdown": markdown, "noTimeStamp": no_timestamp}
