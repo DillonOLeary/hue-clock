@@ -21,6 +21,10 @@ class ClockInLineTest(unittest.TestCase):
         ledger = DayLedger().clock_in(at(9, 12)).clock_out(at(12, 40))
         self.assertEqual(clock_in_line(ledger, at(13, 32)), "🟢 1:32p · 52m break")
 
+    def test_break_shown_at_exactly_one_minute(self):
+        ledger = DayLedger().clock_in(at(9)).clock_out(at(10, 0))
+        self.assertEqual(clock_in_line(ledger, at(10, 1)), "🟢 10:01a · 1m break")
+
     def test_no_break_under_a_minute(self):
         ledger = DayLedger().clock_in(at(9)).clock_out(at(10, 0))
         line = clock_in_line(ledger, at(10, 0) + dt.timedelta(seconds=45))

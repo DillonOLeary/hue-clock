@@ -86,6 +86,12 @@ class ProjectionTest(unittest.TestCase):
         self.assertIsNone(status.last_confirmed_at)
         self.assertEqual(self.notes.days_with_pending(DAY), [DAY])
 
+    def test_has_pending_reflects_queue_depth(self):
+        queued = QueueStatus(pending=1, head_queued_at=at(9), last_confirmed_at=None)
+        empty = QueueStatus(pending=0, head_queued_at=None, last_confirmed_at=None)
+        self.assertTrue(queued.has_pending)
+        self.assertFalse(empty.has_pending)
+
     def test_queue_staleness_is_the_projections_call(self):
         queued = QueueStatus(pending=1, head_queued_at=at(9), last_confirmed_at=None)
         self.assertFalse(queued.is_stale(at(9, 1)))  # one flush pass hasn't elapsed

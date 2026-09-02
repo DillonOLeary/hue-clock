@@ -96,6 +96,18 @@ class TimeTrackingTest(unittest.TestCase):
         self.assertTrue(overviews[0].fully_struck)
         self.assertFalse(overviews[1].fully_struck)
 
+    def test_sessions_overview_reports_spans_strikes_and_the_open_session(self):
+        self.app.record_clock_state(True, at(9))
+        self.app.record_clock_state(False, at(10))
+        self.app.record_clock_state(True, at(11))
+        self.app.strike_span(at(9), at(10), at(12))
+        first, second = self.app.sessions(DAY, at(12))
+        self.assertEqual((first.started_at, first.ended_at), (at(9), at(10)))
+        self.assertTrue(first.fully_struck)
+        self.assertIsNone(second.ended_at)
+        self.assertEqual(second.seconds, 3600)
+        self.assertFalse(second.fully_struck)
+
     def test_strike_session_out_of_range_is_rejected(self):
         with self.assertRaises(NoSuchSession):
             self.app.strike_session(0, at(12))
