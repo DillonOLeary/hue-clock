@@ -59,8 +59,8 @@ def cmd_status() -> None:
 
 
 def cmd_run() -> None:
-    _lock, _runtime, listener = start_daemon()
-    listener.run()
+    daemon = start_daemon()
+    daemon.listener.run()
 
 
 def cmd_import_history(log_path=None) -> None:

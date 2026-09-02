@@ -14,6 +14,7 @@ class Provenance(Enum):
     RECONCILED = "reconciled"
     ROLLOVER = "rollover"
     IMPORTED = "imported"
+    QUIT = "quit"  # app quit clocked out; the lamp itself may still be on
 
 
 class AlreadyClockedIn(Exception):

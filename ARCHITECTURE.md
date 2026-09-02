@@ -66,6 +66,9 @@ lets an event store absorb late-arriving truth without lying.
 - `ROLLOVER` — bookkeeping at midnight; extends ledgers, publishes nothing.
 - `IMPORTED` — legacy history; extends ledgers, publishes nothing (the lines
   are already in Capacities).
+- `QUIT` — the app was quit while clocked in; the moment is exact, so the
+  line publishes unmarked. The lamp itself may still be lit — if it is at
+  next launch, reconciliation clocks back in as `RECONCILED`.
 
 The projection makes all publish/archive decisions from provenance alone — no
 flags, no side channels.
@@ -146,6 +149,8 @@ retiring history.
 main thread — rumps menu bar
   15s timer: advance_to(now) + queries (clock_status, day_summary,
              sessions, queue_status); strike clicks → commands
+  before_quit: Daemon.shutdown() — QUIT clock-out, then one flush attempt
+             bounded at 10s; anything unsent drains next launch
 
 listener thread — runtime/hue_listener.py
   SSE loop: reconcile on (re)connect, then each lamp event →

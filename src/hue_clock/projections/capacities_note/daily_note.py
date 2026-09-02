@@ -17,7 +17,7 @@ from hue_clock.projections.capacities_note.note_lines import (
 if TYPE_CHECKING:
     import datetime as dt
 
-PUBLISHED_PROVENANCES = (Provenance.OBSERVED, Provenance.RECONCILED)
+PUBLISHED_PROVENANCES = (Provenance.OBSERVED, Provenance.RECONCILED, Provenance.QUIT)
 
 
 @dataclass

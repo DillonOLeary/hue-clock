@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 
 from hue_clock.projections.capacities_note.flusher import NoteFlusher
 from hue_clock.runtime.composition import TrackerRuntime
+from hue_clock.runtime.daemon import Daemon
 from hue_clock.runtime.hue_listener import HueListener
 
 LIGHT_ID = "light-1"
@@ -58,6 +59,28 @@ class EndToEndTest(unittest.TestCase):
             "TIMETRACKING_SQLITE_DBNAME": f"file:{Path(tmp.name) / 'tracking.db'}",
             "CAPACITIESNOTEPROJECTION_SQLITE_DBNAME": f"file:{Path(tmp.name) / 'notes.db'}",
         }
+
+    def test_shutdown_clocks_out_publishes_and_is_idempotent(self):
+        runtime = TrackerRuntime.start(env=self.env)
+        self.addCleanup(runtime.stop)
+        bridge = ScriptedBridge(initially_on=True, batches=[])
+        publisher = RecordingPublisher()
+        flusher = NoteFlusher(runtime.notes, publisher, lock=runtime.commands)
+        listener = HueListener(runtime, bridge, "Focus Lamp")
+        daemon = Daemon(lock=io.StringIO(), runtime=runtime, listener=listener, flusher=flusher)
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            listener.run()  # reconciles against the lit lamp: clocked in
+            daemon.shutdown()
+            daemon.shutdown()  # second quit path firing must record nothing new
+
+        clock_in, clock_out = publisher.published
+        self.assertTrue(clock_in.startswith("🟢 "))
+        self.assertTrue(clock_out.startswith("🔴 "))
+        self.assertNotIn("approx", clock_out)  # quit time is exact
+        now = dt.datetime.now()
+        self.assertFalse(runtime.clock_status(now).is_clocked_in)
+        self.assertEqual(runtime.queue_status(now).pending, 0)
 
     def test_observe_publish_and_survive_restart(self):
         runtime = TrackerRuntime.start(env=self.env)

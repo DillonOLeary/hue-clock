@@ -28,6 +28,13 @@ class DailyNoteTest(unittest.TestCase):
         queued = note.record_transition("in", at(9, 12), Provenance.RECONCILED, QUEUED_AT)
         self.assertEqual(queued, "🟢 9:12a *(approx)*")
 
+    def test_quit_clock_out_queues_an_exact_line(self):
+        note = DailyNote(DAY)
+        note.record_transition("in", at(9), Provenance.OBSERVED, QUEUED_AT)
+        queued = note.record_transition("out", at(17, 30), Provenance.QUIT, QUEUED_AT)
+        self.assertEqual(queued, "🔴 5:30p · 8h 30m")
+        self.assertFalse(note.ledger.is_clocked_in)
+
     def test_rollover_extends_ledger_without_queueing(self):
         note = DailyNote(DAY)
         self.assertIsNone(note.record_transition("in", at(0), Provenance.ROLLOVER, QUEUED_AT))

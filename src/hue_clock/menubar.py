@@ -3,7 +3,8 @@
 The embedded daemon (runtime/daemon.py) does the actual work; this UI only
 issues commands and reads queries through TrackerRuntime. Launched by hand —
 `uv run hue-clock`, or the dockable "Hue Clock.app" built by
-scripts/make_app.py. Quit from the menu (or the Dock icon).
+scripts/make_app.py. Quit from the menu (or the Dock icon); quitting hands
+off to Daemon.shutdown(), which clocks out and flushes.
 """
 
 import datetime as dt
@@ -30,14 +31,17 @@ class HueClockApp(rumps.App):
         self.strike_menu = rumps.MenuItem("Strike work time")
         self.menu = [self.now_item, self.today_item, self.last_item, self.strike_menu]
         self.runtime = None
+        self.daemon = None
         self.startup_error = None
+        rumps.events.before_quit.register(self._clock_out_on_quit)
         threading.Thread(target=self._run_daemon, daemon=True).start()
         rumps.Timer(self._refresh, 15).start()
 
     def _run_daemon(self) -> None:
         try:
-            self._lock, self.runtime, listener = start_daemon()
-            listener.run()
+            self.daemon = start_daemon()
+            self.runtime = self.daemon.runtime
+            self.daemon.listener.run()
         except SystemExit as e:
             self.startup_error = str(e)
             print(f"listener exited: {e}", flush=True)
@@ -135,6 +139,11 @@ class HueClockApp(rumps.App):
             self.today_item.title = "No sessions today"
         self._rebuild_strike_menu(now)
         self._refresh_queue_item(now)
+
+    def _clock_out_on_quit(self) -> None:
+        # before_quit: what shutdown means is the daemon's business, not ours.
+        if self.daemon is not None:
+            self.daemon.shutdown()
 
     def _refresh_queue_item(self, now) -> None:
         queue = self.runtime.queue_status(now)
