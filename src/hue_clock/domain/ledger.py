@@ -86,14 +86,6 @@ class DayLedger:
     def merged_strikes(self) -> tuple[TimeSpan, ...]:
         return merge_spans(self.strikes)
 
-    @property
-    def first_started_at(self) -> dt.datetime | None:
-        return self.sessions[0].started_at if self.sessions else None
-
-    @property
-    def last_ended_at(self) -> dt.datetime | None:
-        return self.sessions[-1].ended_at if self.sessions else None
-
     def gap_before(self, at: dt.datetime) -> dt.timedelta | None:
         last = self.sessions[-1] if self.sessions else None
         if last is None or last.ended_at is None:
