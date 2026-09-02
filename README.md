@@ -28,7 +28,8 @@ uv run hue-clock                         # launch the menu bar app
 ## Menu bar app
 
 `uv run hue-clock` puts a 🟢/🔴 icon in the menu bar; click it for
-"In for 1h 23m" / today's totals; quit from the menu. The title is
+"In for 1h 23m" / today's totals. Quitting (menu, Dock, or logout) clocks
+you out and gives queued lines one bounded shot at Capacities. The title is
 deliberately emoji-only to stay narrow: on notched MacBooks, macOS silently
 hides menu bar items that don't fit left of the notch — if the icon is
 missing, free up space (hide/quit another menu bar item). The app embeds the
@@ -62,18 +63,15 @@ shows up in later Σ values and menu totals. Only overlap with clocked-in
 sessions is subtracted (striking across a break can't over-subtract), and
 overlapping strikes merge.
 
-**Publishing to Capacities** is outbox-based and write-only: each line is
-committed to the event store atomically with the transition that caused it,
-then a dedicated flusher thread appends it. A 200 pops the line; any error
-keeps it queued and the next pass (every 60s) retries — at-least-once. The app
-never reads or edits the note, so the note is yours to annotate freely; it will
-never be overwritten or reconciled against the outbox. A duplicate is possible
-only if the process dies in the window between the append's 200 and the local
-commit — rare, and cleaned up by hand. The menu shows ⏳ with the queue depth
-while lines drain, escalating to ⚠️ if a line stays queued past a flush
-interval (appends are failing — check that Capacities is reachable). The full
-story behind this design, including why read-back was removed, is in
-ARCHITECTURE.md.
+**Publishing to Capacities** is outbox-based and write-only: each line commits
+to the event store atomically with the transition that caused it, and a flusher
+thread appends it — at-least-once, retrying every 60s until a 200. The app
+never reads or edits the note, so it's yours to annotate freely. Rare duplicate
+lines are possible (a crash or concurrent flush between an append's 200 and the
+local pop) and are cleaned up by hand. The menu shows ⏳ with queue depth while
+lines drain, escalating to ⚠️ after a couple of minutes stuck (check that
+Capacities is reachable). The full design story, including why read-back was
+removed, is in ARCHITECTURE.md.
 
 The listener subscribes to the bridge's CLIP v2 event stream. The bridge
 keeps no event history — if the process is down, missed transitions are
@@ -132,6 +130,7 @@ what CLI runs from inside the repo hit.
 
 ```sh
 uv run python -m unittest discover -s tests -t .
+uv run pre-commit install   # once per clone: ruff + tach check gate every commit
 ```
 
 Four rings, mirroring the architecture: pure domain tests (no I/O),
@@ -140,10 +139,10 @@ fakes, and one end-to-end run through real SQLite with a scripted bridge.
 
 ## Capacities API notes
 
-- New API (the beta at `api.capacities.io/docs` is deprecated, EOL 2026-09-01)
-- Base URL `https://api.capacities.io`, header `X-Capacities-Api-Version: 0.1.0`,
+- Base URL `https://api.capacities.io`, header `X-Capacities-Api-Version: 1.0.0`,
   bearer token bound to one space
 - OpenAPI spec: https://developers.capacities.io/openapi.json
 - Rate limit: 30 req/min per endpoint
-- `src/hue_clock/adapters/capacities_api.py` is a stdlib-only client:
-  daily-note append, object CRUD via markdown, search, block delete
+- `src/hue_clock/adapters/capacities_api.py` is a urllib client (tenacity for
+  transient retries): daily-note append, object CRUD via markdown, search,
+  block delete

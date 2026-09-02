@@ -83,6 +83,10 @@ domain  ◀─  application  ◀─  projections  ◀─  runtime / cli / menuba
                                        composition root touches both sides)
 ```
 
+This rule is enforced: `tach.toml` declares each module's allowed imports and
+`tach check` (run by pre-commit) fails on any undeclared one — loosening a
+boundary requires a visible diff to the contract file.
+
 One accepted impurity: `domain/` imports `eventsourcing.domain.Aggregate`.
 Purists would keep the domain framework-free and add a mapping layer; that
 layer would re-implement half the library to buy nothing this project needs.
