@@ -5,3 +5,4 @@ __pycache__/
 .venv/
 .claude/settings.local.json
 tach_module_graph.dot
+.coverage

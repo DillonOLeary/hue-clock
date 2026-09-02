@@ -19,6 +19,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "coverage>=7.16.0",
     "pre-commit>=4.6.2",
     "ruff>=0.15.22",
     "tach>=0.35.0",
@@ -102,3 +103,7 @@ ignore = [
 
 [tool.ruff.format]
 docstring-code-format = true
+
+[tool.coverage.run]
+source = ["hue_clock"]
+branch = true
