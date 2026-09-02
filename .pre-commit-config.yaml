@@ -1,0 +1,22 @@
+# Pre-commit hooks: lint (with safe autofixes), format, dependency direction.
+# Local hooks run through uv so tool versions are single-sourced in uv.lock —
+# no second pin to drift. Install with: uv run pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (safe fixes)
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+      - id: tach
+        name: tach (dependency direction)
+        entry: uv run tach check
+        language: system
+        pass_filenames: false
+        types: [python]

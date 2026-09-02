@@ -1,0 +1,59 @@
+# Dependency-direction contract — the enforced version of ARCHITECTURE.md's
+# "dependency rule" diagram. `tach check` fails on any import that isn't
+# declared here; loosening a boundary requires a visible diff to this file.
+
+source_roots = ["src"]
+exclude = ["tests", "scripts"]
+
+# Pure rendering helpers; usable anywhere without declaring a dependency.
+[[modules]]
+path = "hue_clock.formatting"
+utility = true
+
+[[modules]]
+path = "hue_clock.domain"
+depends_on = []
+
+[[modules]]
+path = "hue_clock.application"
+depends_on = ["hue_clock.domain"]
+
+[[modules]]
+path = "hue_clock.projections"
+depends_on = ["hue_clock.domain", "hue_clock.application"]
+
+# Adapters implement ports structurally (Protocol); today they import nothing
+# internal. If one ever needs its port's type, add the projections dependency
+# deliberately.
+[[modules]]
+path = "hue_clock.adapters"
+depends_on = []
+
+# Composition root: the one place adapters meet the application.
+[[modules]]
+path = "hue_clock.runtime"
+depends_on = [
+    "hue_clock.domain",
+    "hue_clock.application",
+    "hue_clock.projections",
+    "hue_clock.adapters",
+]
+
+# Outermost ring: entry points may reach anything below.
+[[modules]]
+path = "hue_clock.menubar"
+depends_on = ["hue_clock.runtime"]
+
+[[modules]]
+path = "hue_clock.cli"
+depends_on = [
+    "hue_clock.runtime",
+    "hue_clock.adapters",
+    "hue_clock.application",
+    "hue_clock.projections",
+    "hue_clock.history_import",
+]
+
+[[modules]]
+path = "hue_clock.history_import"
+depends_on = ["hue_clock.domain", "hue_clock.runtime"]
