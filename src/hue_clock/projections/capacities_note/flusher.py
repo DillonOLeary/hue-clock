@@ -67,13 +67,10 @@ class NoteFlusher:
         self._apply(day, text, lambda n: n.head_confirmed(self.now()))
         return True
 
-    def _apply(
-        self, day: dt.date, expected_head: str, mutate: Callable[[DailyNote], None]
-    ) -> DailyNote | None:
+    def _apply(self, day: dt.date, expected_head: str, mutate: Callable[[DailyNote], None]) -> None:
         with self.lock:
             note = self.notes.note(day)
             if note is None or note.head is None or note.head.text != expected_head:
-                return None
+                return
             mutate(note)
             self.notes.save(note)
-            return note

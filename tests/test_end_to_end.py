@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from hue_clock.application.time_tracking import ClockedOut
 from hue_clock.projections.capacities_note.flusher import NoteFlusher
 from hue_clock.runtime.daemon import Daemon
 from hue_clock.runtime.hue_listener import HueListener
@@ -79,7 +80,7 @@ class EndToEndTest(unittest.TestCase):
         self.assertTrue(clock_out.startswith("🔴 "))
         self.assertNotIn("approx", clock_out)  # quit time is exact
         now = dt.datetime.now()
-        self.assertFalse(runtime.clock_status(now).is_clocked_in)
+        self.assertEqual(runtime.clock_status(now), ClockedOut())
         self.assertEqual(runtime.queue_status(now).pending, 0)
 
     def test_observe_publish_and_survive_restart(self):
@@ -98,15 +99,13 @@ class EndToEndTest(unittest.TestCase):
         self.assertTrue(clock_out.startswith("🔴 "))
 
         now = dt.datetime.now()
-        self.assertFalse(runtime.clock_status(now).is_clocked_in)
+        self.assertEqual(runtime.clock_status(now), ClockedOut())
         self.assertEqual(runtime.queue_status(now).pending, 0)
         runtime.stop()
 
         reborn = TrackerRuntime.start(env=self.env)
         self.addCleanup(reborn.stop)
-        status = reborn.clock_status(now)
-        self.assertIsNotNone(status)
-        self.assertFalse(status.is_clocked_in)
+        self.assertEqual(reborn.clock_status(now), ClockedOut())
         self.assertEqual(reborn.day_summary(now).session_count, 1)
         self.assertEqual(reborn.queue_status(now).pending, 0)
 

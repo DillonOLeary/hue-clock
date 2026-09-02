@@ -1,7 +1,12 @@
 import datetime as dt
 import unittest
 
-from hue_clock.application.time_tracking import NoSuchSession, TimeTracking
+from hue_clock.application.time_tracking import (
+    ClockedIn,
+    ClockedOut,
+    NoSuchSession,
+    TimeTracking,
+)
 from hue_clock.domain.work_day import Provenance, WorkDay
 
 DAY = dt.date(2026, 7, 21)
@@ -20,9 +25,7 @@ class TimeTrackingTest(unittest.TestCase):
 
     def test_lamp_on_clocks_in(self):
         self.assertTrue(self.app.record_clock_state(True, at(9)))
-        status = self.app.clock_status(at(10))
-        self.assertTrue(status.is_clocked_in)
-        self.assertEqual(status.since, at(9))
+        self.assertEqual(self.app.clock_status(at(10)), ClockedIn(since=at(9)))
 
     def test_unchanged_lamp_state_is_a_no_op(self):
         self.app.record_clock_state(True, at(9))
@@ -51,7 +54,7 @@ class TimeTrackingTest(unittest.TestCase):
         day2 = DAY + dt.timedelta(days=1)
         self.assertEqual(self.app.day_summary(day2, at(9, day=day3)).worked_seconds, 24 * 3600)
         self.assertEqual(self.app.day_summary(day3, at(9, day=day3)).worked_seconds, 3600)
-        self.assertFalse(self.app.clock_status(at(9, day=day3)).is_clocked_in)
+        self.assertEqual(self.app.clock_status(at(9, day=day3)), ClockedOut())
 
     def test_rollover_events_carry_rollover_provenance(self):
         self.app.record_clock_state(True, at(21))
@@ -67,8 +70,7 @@ class TimeTrackingTest(unittest.TestCase):
         day2 = DAY + dt.timedelta(days=1)
         self.app.advance_to(at(8, day=day2))
         status = self.app.clock_status(at(8, day=day2))
-        self.assertTrue(status.is_clocked_in)
-        self.assertEqual(status.since, at(0, day=day2))
+        self.assertEqual(status, ClockedIn(since=at(0, day=day2)))
 
     def test_advance_to_without_open_session_changes_nothing(self):
         self.app.record_clock_state(True, at(9))

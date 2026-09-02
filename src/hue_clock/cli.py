@@ -14,7 +14,7 @@ import datetime as dt
 import sys
 
 from hue_clock.adapters.hue_bridge import HueBridge
-from hue_clock.application.time_tracking import TimeTracking
+from hue_clock.application.time_tracking import ClockedIn, TimeTracking
 from hue_clock.formatting import format_clock, format_duration
 from hue_clock.projections.capacities_note.projection import CapacitiesNoteProjection
 from hue_clock.runtime.config import load_config, require
@@ -32,12 +32,11 @@ def cmd_status() -> None:
     now = dt.datetime.now()
     tracking = TimeTracking(env=persistence_env())
     status = tracking.clock_status(now)
-    since = status.since if status is not None and status.is_clocked_in else None
     if status is None:
         print("no history yet")
-    elif since is not None:
-        elapsed = format_duration((now - since).total_seconds())
-        print(f"🟢 clocked in since {format_clock(since)} ({elapsed})")
+    elif isinstance(status, ClockedIn):
+        elapsed = format_duration((now - status.since).total_seconds())
+        print(f"🟢 clocked in since {format_clock(status.since)} ({elapsed})")
     else:
         print("🔴 clocked out")
 

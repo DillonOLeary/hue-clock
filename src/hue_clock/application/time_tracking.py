@@ -22,9 +22,16 @@ class NoSuchSession(Exception):
 
 
 @dataclass(frozen=True)
-class ClockStatus:
-    is_clocked_in: bool
-    since: dt.datetime | None
+class ClockedIn:
+    since: dt.datetime
+
+
+@dataclass(frozen=True)
+class ClockedOut:
+    pass
+
+
+ClockStatus = ClockedIn | ClockedOut
 
 
 @dataclass(frozen=True)
@@ -108,10 +115,9 @@ class TimeTracking(Application):
         if latest is None:
             return None
         open_session = latest.ledger.open_session
-        return ClockStatus(
-            is_clocked_in=open_session is not None,
-            since=open_session.started_at if open_session else None,
-        )
+        if open_session is None:
+            return ClockedOut()
+        return ClockedIn(since=open_session.started_at)
 
     def day_summary(self, day: dt.date, now: dt.datetime) -> DaySummary | None:
         work_day = self._work_day(day)

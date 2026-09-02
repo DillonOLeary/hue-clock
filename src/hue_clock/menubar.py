@@ -14,6 +14,7 @@ import threading
 import rumps
 import rumps.events
 
+from hue_clock.application.time_tracking import ClockedIn
 from hue_clock.formatting import format_clock, format_duration
 from hue_clock.runtime.config import LOG_FILE
 from hue_clock.runtime.daemon import start_daemon
@@ -114,10 +115,10 @@ class HueClockApp(rumps.App):
         # Emoji-only title: keeps the status item ~25pt wide so it fits in the
         # sliver of menu bar left of the notch. Details live in the menu.
         status = self.runtime.clock_status(now)
-        since = status.since if status is not None and status.is_clocked_in else None
-        if since is not None:
+        if isinstance(status, ClockedIn):
             self.title = "🟢"
-            self.now_item.title = f"In for {format_duration((now - since).total_seconds())}"
+            elapsed = format_duration((now - status.since).total_seconds())
+            self.now_item.title = f"In for {elapsed}"
         else:
             self.title = "🔴"
             self.now_item.title = "Clocked out"

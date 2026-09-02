@@ -42,7 +42,7 @@ depends_on = [
 # Outermost ring: entry points may reach anything below.
 [[modules]]
 path = "hue_clock.menubar"
-depends_on = ["hue_clock.runtime"]
+depends_on = ["hue_clock.runtime", "hue_clock.application"]
 
 [[modules]]
 path = "hue_clock.cli"

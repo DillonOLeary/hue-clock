@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 
 from hue_clock.adapters.hue_bridge import HueBridge
+from hue_clock.application.time_tracking import ClockedIn
 from hue_clock.domain.work_day import Provenance
 from hue_clock.runtime.tracker_runtime import TrackerRuntime
 
@@ -62,6 +63,6 @@ class HueListener:
         now = dt.datetime.now()
         self.runtime.advance_to(now)
         status = self.runtime.clock_status(now)
-        known_on = status.is_clocked_in if status else False
+        known_on = isinstance(status, ClockedIn)
         if known_on != live_on:
             self.runtime.record_clock_state(live_on, now, Provenance.RECONCILED)

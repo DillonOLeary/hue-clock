@@ -16,6 +16,7 @@ from hue_clock.projections.capacities_note.note_lines import (
 
 if TYPE_CHECKING:
     import datetime as dt
+    from typing import Literal
 
 PUBLISHED_PROVENANCES = (Provenance.OBSERVED, Provenance.RECONCILED, Provenance.QUIT)
 
@@ -53,7 +54,11 @@ class DailyNote(Aggregate):
         return self.queue[0] if self.queue else None
 
     def record_transition(
-        self, kind: str, at: dt.datetime, provenance: Provenance, queued_at: dt.datetime
+        self,
+        kind: Literal["in", "out"],
+        at: dt.datetime,
+        provenance: Provenance,
+        queued_at: dt.datetime,
     ) -> str | None:
         queued = None
         if provenance in PUBLISHED_PROVENANCES:
@@ -106,7 +111,7 @@ class DailyNote(Aggregate):
         self.queue.append(QueuedLine(text, first_queued_at=at))
 
     @event("TransitionNoted")
-    def _transition_noted(self, kind: str, at: dt.datetime) -> None:
+    def _transition_noted(self, kind: Literal["in", "out"], at: dt.datetime) -> None:
         if kind == "in":
             self.ledger = self.ledger.clock_in(at)
         else:
