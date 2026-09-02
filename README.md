@@ -103,7 +103,7 @@ uv run hue-clock-listener import-history   # one-off: seed the event store from 
 Nothing auto-starts — you decide when tracking runs. Build the app bundle:
 
 ```sh
-uv run --python /opt/homebrew/opt/python@3.13/bin/python3.13 --group build scripts/make_app.py
+scripts/build_app.sh
 mkdir -p ~/.config/hue_clock && ln -sf "$PWD/.env" ~/.config/hue_clock/.env
 ```
 
